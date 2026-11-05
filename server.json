@@ -1,0 +1,10 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.WuDao0123/indie-alternatives",
+  "title": "Indie Alternatives",
+  "description": "Find indie-made tools and alternatives to big-name software. 1,500+ products. Logs unmet needs.",
+  "repository": { "url": "https://github.com/WuDao0123/indie-alternatives", "source": "github" },
+  "websiteUrl": "https://indiealternatives.dev",
+  "version": "0.2.0",
+  "remotes": [{ "type": "streamable-http", "url": "https://indiealternatives.dev/mcp" }]
+}
