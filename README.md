@@ -7,11 +7,33 @@ Indie-made alternatives to big-name software, inside **any AI assistant**:
 1. When a user asks "is there a tool that does X?" or "what's an alternative to Typeform?", the AI searches a **catalog of products made by indie makers** and recommends the best matches.
 2. When nothing fits, the need is **logged anonymously**, so indie makers can see what people want that doesn't exist yet.
 
+## Quick start
+
+Add this MCP server URL to your AI assistant. No install, no API key:
+
+```
+https://indiealternatives.dev/mcp
+```
+
+| Client | How |
+| --- | --- |
+| ChatGPT | Settings → Apps & Connectors → Advanced → Developer mode → Create → paste the URL, auth "None" |
+| Claude (web / desktop) | Settings → Connectors → Add custom connector → paste the URL |
+| Claude Code | `claude mcp add --transport http indie-alternatives https://indiealternatives.dev/mcp` |
+| Cursor / Windsurf / Gemini CLI | `{ "mcpServers": { "indie-alternatives": { "url": "https://indiealternatives.dev/mcp" } } }` |
+| VS Code | `{ "servers": { "indie-alternatives": { "type": "http", "url": "https://indiealternatives.dev/mcp" } } }` in `.vscode/mcp.json` |
+
+Then ask: *"What's a good alternative to Typeform?"* or *"Is there a tool that turns screenshots into nice social images?"*
+
+Makers: [list your product for free](https://indiealternatives.dev/submit).
+
+## All integration styles
+
 One codebase, every integration style:
 
 | Integration | Endpoint / entry | Works with |
 | --- | --- | --- |
-| **MCP (local stdio)** | `npx -y indie-alternatives-mcp` | Claude Desktop, Claude Code, Cursor, Windsurf, VS Code Copilot, Cline, Gemini CLI, Codex CLI, Zed, LM Studio, … |
+| **MCP (local stdio)** | `node dist/src/stdio.js` (from a clone; npm package coming soon) | Claude Desktop, Claude Code, Cursor, Windsurf, VS Code Copilot, Cline, Gemini CLI, Codex CLI, Zed, LM Studio, … |
 | **MCP (remote HTTP)** | `https://indiealternatives.dev/mcp` | ChatGPT (developer mode / apps), Claude custom connectors, Le Chat, Copilot Studio, and every client above that supports remote MCP |
 | **REST + OpenAPI** | `https://indiealternatives.dev/openapi.json` | Custom GPTs (GPT Actions), Gemini / Vertex AI, Dify, n8n, Zapier, LangChain, … |
 | **Function calling** | `https://indiealternatives.dev/functions.json?format=…` | Your own agent on the OpenAI / Anthropic / Gemini APIs |
@@ -52,33 +74,33 @@ npm run build
 npm test
 ```
 
-## 1. Local MCP clients
+## 1. Local MCP clients (run it yourself)
 
-Almost every MCP client uses the same config, in a different file:
+Most people should use the hosted URL above. To run locally from a clone (`npm install && npm run build`), almost every MCP client uses the same config, in a different file. The npm package (`npx -y indie-alternatives-mcp`) is coming soon:
 
 ```json
 {
   "mcpServers": {
     "indie-alternatives": {
-      "command": "npx",
-      "args": ["-y", "indie-alternatives-mcp"]
+      "command": "node",
+      "args": ["/absolute/path/indie-alternatives/dist/src/stdio.js"]
     }
   }
 }
 ```
 
-(From a local checkout, use `"command": "node", "args": ["/absolute/path/indie-alternatives/dist/src/stdio.js"]`.)
+(Once the npm package is out: `"command": "npx", "args": ["-y", "indie-alternatives-mcp"]`.)
 
 | Client | How |
 | --- | --- |
 | Claude Desktop | Edit `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`), paste the config, restart |
-| Claude Code | `claude mcp add indie-alternatives -- npx -y indie-alternatives-mcp` |
+| Claude Code | `claude mcp add indie-alternatives -- node /absolute/path/indie-alternatives/dist/src/stdio.js` |
 | Cursor | `.cursor/mcp.json` in the project or `~/.cursor/mcp.json` |
 | Windsurf | `~/.codeium/windsurf/mcp_config.json` |
 | VS Code (GitHub Copilot) | `.vscode/mcp.json`: rename `mcpServers` to `servers` and add `"type": "stdio"` |
 | Cline / Roo Code | MCP Servers panel → Configure |
 | Gemini CLI | `~/.gemini/settings.json` |
-| Codex CLI | `~/.codex/config.toml`:<br>`[mcp_servers.indie-alternatives]`<br>`command = "npx"`<br>`args = ["-y", "indie-alternatives-mcp"]` |
+| Codex CLI | `~/.codex/config.toml`:<br>`[mcp_servers.indie-alternatives]`<br>`command = "node"`<br>`args = ["/absolute/path/indie-alternatives/dist/src/stdio.js"]` |
 | Zed | `context_servers` in `settings.json` |
 | LM Studio | Program → Install → Edit mcp.json |
 
