@@ -36,7 +36,7 @@ test("submission → review → approve → searchable", async () => {
 
   const ok = await call("/api/submissions", {
     method: "POST",
-    json: { name: "Formly", url: "https://formly.test", tagline: "Forms for static sites", tags: "formspree alternative, form backend", description: "Email me at a@b.com", contact: "me@formly.test" },
+    json: { name: "Formly", url: "https://formly.test", tagline: "Forms for static sites", tags: "formbackend for jamstack, form backend", description: "Email me at a@b.com", contact: "me@formly.test" },
   });
   assert.equal(ok.status, 201);
   const { id } = await ok.json();
@@ -54,13 +54,13 @@ test("submission → review → approve → searchable", async () => {
   assert.deepEqual(ap.product.categories, ["Forms & Surveys"]);
   assert.equal("contact" in ap.product, false, "contact is never published");
 
-  const s = await (await call("/api/search?query=formspree%20alternative")).json();
+  const s = await (await call("/api/search?query=formbackend%20for%20jamstack")).json();
   assert.equal(s.results[0].id, "formly");
   const cat = await (await call("/catalog.json")).json();
   assert.ok(cat.products.some((p: any) => p.id === "formly"));
 
   await call("/api/admin/products/formly", { method: "DELETE", admin: true });
-  const s2 = await (await call("/api/search?query=formspree%20alternative")).json();
+  const s2 = await (await call("/api/search?query=formbackend%20for%20jamstack")).json();
   assert.ok(!s2.results.some((r: any) => r.id === "formly"));
 });
 

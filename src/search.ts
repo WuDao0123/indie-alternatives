@@ -105,8 +105,26 @@ export class ProductIndex {
       hits.push({ product: p, score: Math.round(score * (0.5 + coverage) * 100) / 100, coverage, matchedTerms: matched });
     }
 
+    // "X alternative" / "alternative to X": the user wants something other than X, so drop X itself
+    const target = alternativeTarget(qNorm);
+    if (target.length) {
+      for (let i = hits.length - 1; i >= 0; i--) {
+        const nameToks = tokenize(hits[i].product.name);
+        const nameSet = new Set(nameToks);
+        // "plausible" matches "Plausible Analytics"; "cheaper gumroad" matches "Gumroad"
+        if (target.every((t) => nameSet.has(t)) || (nameToks.length > 0 && nameToks.every((t) => target.includes(t)))) hits.splice(i, 1);
+      }
+    }
+
     hits.sort((a, b) => b.score - a.score || b.coverage - a.coverage);
     const top = hits.slice(0, limit);
     return { query, hits: top, matched: top.some((h) => h.coverage >= MATCH_THRESHOLD) };
   }
+}
+
+/** Tokens of the product named in "X alternative(s)" / "alternative(s) to|for X", if any */
+export function alternativeTarget(q: string): string[] {
+  const m = q.match(/alternatives?\s+(?:to|for)\s+([^,.?!]+)/) ?? q.match(/(?:^|[,.?!]\s*)([^,.?!]+?)\s+alternatives?\b/);
+  if (!m) return [];
+  return tokenize(m[1], { stripFillers: true }).slice(0, 4);
 }

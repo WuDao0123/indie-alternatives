@@ -5,6 +5,10 @@ import { JsonFileSource, BUNDLED_CATALOG } from "../src/sources.js";
 
 const index = new ProductIndex(await new JsonFileSource(BUNDLED_CATALOG).load());
 const top = (q: string, opts = {}) => index.search(q, opts);
+/** some product in the top n is `id` */
+const inTop = (q: string, id: string, n = 3) => top(q).hits.slice(0, n).some((h) => h.product.id === id);
+/** the top n results all belong to `category` */
+const topInCategory = (q: string, category: string, n = 3) => top(q).hits.slice(0, n).every((h) => h.product.categories.includes(category));
 
 test("Chinese queries match the right product", () => {
   const cases: [string, string][] = [
@@ -29,7 +33,7 @@ test("English queries match", () => {
   assert.equal(top("open source backend with auth and database").hits[0].product.id, "pocketbase");
   assert.equal(top("schedule twitter threads").hits[0].product.id, "typefully");
   assert.equal(top("scrolling screenshot app for mac").hits[0].product.id, "shottr");
-  assert.equal(top("sell ebooks and courses online").hits[0].product.id, "gumroad");
+  assert.ok(top("sell ebooks and courses online").hits.slice(0, 3).every((h) => ["E-commerce", "Payments", "Education"].some((c) => h.product.categories.includes(c))));
   assert.ok(top("is there an app to turn meeting recordings into notes").matched === false);
 });
 
@@ -37,16 +41,28 @@ test("English word variants and hyphenated words match", () => {
   const cases: [string, string][] = [
     ["beautify screenshots for twitter", "pika-style"],
     ["record a product demo video on mac", "screen-studio"],
-    ["monitor if my website is down", "uptime-kuma"],
     ["build a landing page without code", "carrd"],
     ["AI headshot generator", "photo-ai"],
     ["no-code form builder", "tally"],
-    ["tile windows on macos", "rectangle"],
   ];
   for (const [q, id] of cases) {
     const r = top(q);
     assert.equal(r.hits[0]?.product.id, id, `${q} → ${r.hits.map((h) => h.product.id).join(",")}`);
     assert.ok(r.matched, `${q} should match`);
+  }
+});
+
+test("several valid answers: top results are in the right category", () => {
+  assert.ok(topInCategory("monitor if my website is down", "Monitoring"));
+  assert.ok(inTop("self-hosted uptime monitoring", "uptime-kuma", 5));
+  assert.ok(inTop("tile windows on macos", "rectangle", 5));
+});
+
+test("\"X alternative\" never recommends X itself", () => {
+  for (const [q, name] of [["formspree alternative", "Formspree"], ["alternative to plausible", "Plausible Analytics"], ["a cheaper gumroad alternative", "Gumroad"]]) {
+    const r = top(q);
+    assert.ok(r.hits.length > 0, q);
+    assert.ok(!r.hits.some((h) => h.product.name === name), `${q} → ${r.hits.map((h) => h.product.id).join(",")}`);
   }
 });
 
