@@ -1,6 +1,6 @@
 # Indie Alternatives
 
-English | [中文](README.zh-CN.md) · [indiealternatives.dev](https://indiealternatives.dev)
+English | [中文](README.zh-CN.md) · [indiealternatives.dev](https://indiealternatives.dev) · [List your product](https://indiealternatives.dev/submit)
 
 Indie-made alternatives to big-name software, inside **any AI assistant**:
 
@@ -221,7 +221,7 @@ Output is JSON, so any agent that runs shell commands can use it.
 
 ## Bring your own catalog
 
-`data/products.json` holds 20 **sample** products. Replace it with your own catalog: an array (or `{ "products": [...] }`) of:
+`data/products.json` is the catalog served at indiealternatives.dev (1,500+ products). To run your own directory, replace it with an array (or `{ "products": [...] }`) of:
 
 ```json
 {

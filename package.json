@@ -52,5 +52,12 @@
     "openapi",
     "function-calling"
   ],
-  "homepage": "https://indiealternatives.dev"
+  "homepage": "https://indiealternatives.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WuDao0123/indie-alternatives.git"
+  },
+  "bugs": {
+    "url": "https://github.com/WuDao0123/indie-alternatives/issues"
+  }
 }
