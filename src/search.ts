@@ -69,6 +69,21 @@ export class ProductIndex {
   }
 
   search(query: string, opts: SearchOptions = {}): SearchResult {
+    // "alternative to X" where X is in the catalog: search for what X does, minus X itself
+    const target = alternativeTarget(normalize(query));
+    const known = target.length ? this.items.find((i) => namesProduct(target, i.product.name)) : undefined;
+    if (known) {
+      const p = known.product;
+      const what = [p.tagline, ...p.categories, ...p.tags.filter((t) => !/alternative/.test(t)).slice(0, 8)].join(" ");
+      const r = this.searchRaw(what, opts, p.id);
+      // only count it as found when the alternatives are in the same category as X
+      const matched = r.hits.some((h) => h.product.categories.some((c) => p.categories.includes(c)));
+      return { query, hits: r.hits, matched };
+    }
+    return this.searchRaw(query, opts);
+  }
+
+  private searchRaw(query: string, opts: SearchOptions, excludeId?: string): SearchResult {
     const limit = Math.min(Math.max(opts.limit ?? 5, 1), 20);
     const { tokens: qSpans, content } = analyze(query, { stripFillers: true });
     const qTokens = [...new Set(qSpans.map((t) => t.text))];
@@ -77,6 +92,7 @@ export class ProductIndex {
 
     for (const item of this.items) {
       const p = item.product;
+      if (p.id === excludeId) continue;
       if (opts.category && !p.categories.some((c) => normalize(c).includes(normalize(opts.category!)))) continue;
       if (opts.pricing && p.pricing !== opts.pricing) continue;
       if (opts.platform && !(p.platforms ?? []).some((x) => normalize(x) === normalize(opts.platform!))) continue;
@@ -105,16 +121,9 @@ export class ProductIndex {
       hits.push({ product: p, score: Math.round(score * (0.5 + coverage) * 100) / 100, coverage, matchedTerms: matched });
     }
 
-    // "X alternative" / "alternative to X": the user wants something other than X, so drop X itself
+    // "X alternative" for an X that is not in the catalog: still never return something named X
     const target = alternativeTarget(qNorm);
-    if (target.length) {
-      for (let i = hits.length - 1; i >= 0; i--) {
-        const nameToks = tokenize(hits[i].product.name);
-        const nameSet = new Set(nameToks);
-        // "plausible" matches "Plausible Analytics"; "cheaper gumroad" matches "Gumroad"
-        if (target.every((t) => nameSet.has(t)) || (nameToks.length > 0 && nameToks.every((t) => target.includes(t)))) hits.splice(i, 1);
-      }
-    }
+    if (target.length) for (let i = hits.length - 1; i >= 0; i--) if (namesProduct(target, hits[i].product.name)) hits.splice(i, 1);
 
     hits.sort((a, b) => b.score - a.score || b.coverage - a.coverage);
     const top = hits.slice(0, limit);
@@ -127,4 +136,12 @@ export function alternativeTarget(q: string): string[] {
   const m = q.match(/alternatives?\s+(?:to|for)\s+([^,.?!]+)/) ?? q.match(/(?:^|[,.?!]\s*)([^,.?!]+?)\s+alternatives?\b/);
   if (!m) return [];
   return tokenize(m[1], { stripFillers: true }).slice(0, 4);
+}
+
+/** Does the "X" of an "X alternative" query name this product? ("plausible" ↔ "Plausible Analytics", "cheaper gumroad" ↔ "Gumroad") */
+function namesProduct(target: string[], name: string): boolean {
+  const toks = tokenize(name);
+  if (!toks.length) return false;
+  const set = new Set(toks);
+  return target.every((t) => set.has(t)) || toks.every((t) => target.includes(t));
 }

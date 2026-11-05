@@ -11,7 +11,7 @@ const FILLERS = [
 const EN_STOP = new Set([
   "a", "an", "the", "is", "are", "there", "any", "tool", "tools", "app", "apps", "that", "can", "to",
   "for", "me", "i", "my", "want", "need", "something", "which", "what", "help", "with", "of", "and", "or",
-  "do", "does", "lets", "let", "some", "good", "best", "software",
+  "do", "does", "lets", "let", "some", "good", "best", "software", "alternative", "alternatives", "similar", "like", "instead",
 ]);
 
 export function normalize(text: string): string {

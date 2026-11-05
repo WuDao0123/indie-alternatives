@@ -66,6 +66,13 @@ test("\"X alternative\" never recommends X itself", () => {
   }
 });
 
+test("\"alternative to X\" with X in the catalog finds products like X", () => {
+  const r = top("alternative to plausible");
+  assert.ok(r.matched && r.hits.length >= 3);
+  assert.ok(r.hits.slice(0, 3).every((h) => h.product.categories.includes("Analytics") && h.product.id !== "plausible"));
+  assert.ok(top("gumroad alternative").hits.every((h) => h.product.id !== "gumroad"));
+});
+
 test("\"alternative to X\" queries match", () => {
   assert.equal(top("typeform alternative").hits[0].product.id, "tally");
   assert.equal(top("google analytics alternative").hits[0].product.id, "plausible");
