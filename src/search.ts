@@ -76,8 +76,11 @@ export class ProductIndex {
       const p = known.product;
       const what = [p.tagline, ...p.categories, ...p.tags.filter((t) => !/alternative/.test(t)).slice(0, 8)].join(" ");
       const r = this.searchRaw(what, opts, p.id);
-      // only count it as found when the alternatives are in the same category as X
-      const matched = r.hits.some((h) => h.product.categories.some((c) => p.categories.includes(c)));
+      // only count it as found when an alternative is like X: same category, or at least 2 shared tags
+      const xTags = new Set(p.tags.filter((t) => !/alternative/.test(t)));
+      const matched = r.hits.some(
+        (h) => h.product.categories.some((c) => p.categories.includes(c)) || h.product.tags.filter((t) => xTags.has(t)).length >= 2,
+      );
       return { query, hits: r.hits, matched };
     }
     return this.searchRaw(query, opts);

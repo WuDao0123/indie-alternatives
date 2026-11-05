@@ -7914,7 +7914,7 @@
     "url": "https://cal.com/",
     "tagline": "Open-source scheduling infrastructure and booking links",
     "description": "An open-source scheduling platform for booking pages, team round-robin, routing forms and calendar integrations, available hosted or self-hosted.",
-    "categories": ["Calendar & Time"],
+    "categories": ["Scheduling"],
     "tags": ["scheduling", "booking page", "appointment scheduling", "meeting scheduler", "calendly alternative", "open source", "self-hosted", "round robin", "calendar"],
     "pricing": "freemium",
     "platforms": ["web", "self-hosted", "api"]
