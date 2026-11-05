@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "indie-alternatives",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Privacy promise: no access logs. Keep Workers Logs / traces off.
+  "observability": { "enabled": false, "logs": { "enabled": false, "invocation_logs": false } },
+  "vars": {
+    "PUBLIC_URL": "https://indiealternatives.dev",
+    "HIDE_NEEDS_LIST": "1"
+  },
+  // ADMIN_TOKEN is a secret: npx wrangler secret put ADMIN_TOKEN
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "indie-alternatives",
+      // created 2026-11-05 (region ENAM)
+      "database_id": "6b810ade-e827-434f-bc0e-b120f1fc5b62",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "routes": [{ "pattern": "indiealternatives.dev", "custom_domain": true }],
+  // one canonical address (better for SEO); no workers.dev or preview URLs
+  "workers_dev": false,
+  "preview_urls": false
+}

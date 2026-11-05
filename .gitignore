@@ -1,0 +1,6 @@
+node_modules
+dist
+*.jsonl
+*.db
+.wrangler
+.dev.vars

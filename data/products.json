@@ -1,0 +1,222 @@
+[
+  {
+    "id": "carrd",
+    "name": "Carrd",
+    "url": "https://carrd.co",
+    "tagline": "Simple one-page sites in minutes",
+    "description": "Cheap, simple builder for one-page websites: personal pages, product landing pages, portfolios.",
+    "categories": ["Website Builder"],
+    "tags": ["landing page", "落地页", "单页网站", "个人主页", "website builder", "no-code", "无代码", "建站", "portfolio", "作品集", "网站搭建", "单页网站 几分钟"],
+    "pricing": "freemium",
+    "platforms": ["web"]
+  },
+  {
+    "id": "plausible",
+    "name": "Plausible Analytics",
+    "url": "https://plausible.io",
+    "tagline": "Lightweight, privacy-friendly website analytics",
+    "description": "Cookie-free, open-source web analytics. A GDPR-compliant Google Analytics alternative.",
+    "categories": ["Analytics"],
+    "tags": ["analytics", "网站统计", "流量统计", "访问统计", "privacy", "隐私", "google analytics alternative", "开源", "open source", "GDPR", "数据分析", "轻量 注重隐私", "网站访问统计"],
+    "pricing": "paid",
+    "platforms": ["web"]
+  },
+  {
+    "id": "tally",
+    "name": "Tally",
+    "url": "https://tally.so",
+    "tagline": "Build forms like writing a doc",
+    "description": "Online forms and surveys with a generous free tier. Alternative to Typeform and Google Forms.",
+    "categories": ["Forms & Surveys"],
+    "tags": ["form", "表单", "问卷", "survey", "调查", "typeform alternative", "报名", "收集信息", "no-code", "表单问卷", "在线表单"],
+    "pricing": "freemium",
+    "platforms": ["web"]
+  },
+  {
+    "id": "buttondown",
+    "name": "Buttondown",
+    "url": "https://buttondown.com",
+    "tagline": "Minimal newsletter tool",
+    "description": "A minimalist tool for running an email newsletter, written in Markdown.",
+    "categories": ["Email Marketing"],
+    "tags": ["newsletter", "邮件订阅", "邮件通讯", "email", "邮件", "订阅", "markdown", "写作", "博客", "邮件营销", "极简 Newsletter"],
+    "pricing": "freemium",
+    "platforms": ["web"]
+  },
+  {
+    "id": "excalidraw",
+    "name": "Excalidraw",
+    "url": "https://excalidraw.com",
+    "tagline": "Hand-drawn style online whiteboard",
+    "description": "Open-source virtual whiteboard for hand-drawn style diagrams, flowcharts and sketches, with live collaboration.",
+    "categories": ["Design"],
+    "tags": ["whiteboard", "白板", "画图", "流程图", "架构图", "diagram", "草图", "sketch", "开源", "open source", "协作", "设计绘图", "手绘风格 在线白板"],
+    "pricing": "free",
+    "platforms": ["web"]
+  },
+  {
+    "id": "shottr",
+    "name": "Shottr",
+    "url": "https://shottr.cc",
+    "tagline": "Small, fast screenshot tool for Mac",
+    "description": "Tiny, fast Mac screenshot app with scrolling capture, OCR and annotations.",
+    "categories": ["Productivity"],
+    "tags": ["screenshot", "截图", "截屏", "滚动截图", "OCR", "文字识别", "标注", "mac", "macOS", "效率工具", "Mac 截图工具"],
+    "pricing": "freemium",
+    "platforms": ["macos"]
+  },
+  {
+    "id": "screen-studio",
+    "name": "Screen Studio",
+    "url": "https://screen.studio",
+    "tagline": "Beautiful screen recordings, automatically",
+    "description": "Mac screen recorder that automatically adds zoom, smooth cursor and polish for product demo videos.",
+    "categories": ["Video"],
+    "tags": ["screen recording", "录屏", "屏幕录制", "演示视频", "demo", "产品演示", "video", "视频", "mac", "录屏视频", "精美"],
+    "pricing": "paid",
+    "platforms": ["macos"]
+  },
+  {
+    "id": "rectangle",
+    "name": "Rectangle",
+    "url": "https://rectangleapp.com",
+    "tagline": "Manage Mac windows with keyboard shortcuts",
+    "description": "Open-source Mac window manager: snap windows to halves, thirds and corners via shortcuts.",
+    "categories": ["Productivity"],
+    "tags": ["window manager", "窗口管理", "分屏", "快捷键", "mac", "macOS", "开源", "open source", "效率工具", "Mac 窗口"],
+    "pricing": "free",
+    "platforms": ["macos"]
+  },
+  {
+    "id": "bannerbear",
+    "name": "Bannerbear",
+    "url": "https://www.bannerbear.com",
+    "tagline": "Generate images and videos via API",
+    "description": "API for auto-generating images and videos from templates, e.g. social media graphics and OG images.",
+    "categories": ["Design", "Developer Tools"],
+    "tags": ["image generation", "图片生成", "批量生成", "配图", "OG image", "社交媒体", "API", "自动化", "automation", "模板", "设计绘图", "开发者工具", "用 API 批量生成图片和视频"],
+    "pricing": "paid",
+    "platforms": ["web", "api"]
+  },
+  {
+    "id": "senja",
+    "name": "Senja",
+    "url": "https://senja.io",
+    "tagline": "Collect and show off testimonials",
+    "description": "Collect customer testimonials and embed a wall of love on your site.",
+    "categories": ["Marketing"],
+    "tags": ["testimonials", "用户评价", "好评", "口碑", "social proof", "评价墙", "营销", "嵌入组件", "营销增长", "收集 展示 用户好评"],
+    "pricing": "freemium",
+    "platforms": ["web"]
+  },
+  {
+    "id": "typefully",
+    "name": "Typefully",
+    "url": "https://typefully.com",
+    "tagline": "Write and schedule tweets and threads",
+    "description": "Write, schedule and publish posts and threads for X (Twitter) and LinkedIn.",
+    "categories": ["Social Media", "Marketing"],
+    "tags": ["twitter", "推特", "X", "thread", "定时发布", "排期", "社交媒体", "social media", "linkedin", "写作", "营销增长", "写推文 长串推文 定时发布"],
+    "pricing": "freemium",
+    "platforms": ["web"]
+  },
+  {
+    "id": "bear-blog",
+    "name": "Bear Blog",
+    "url": "https://bearblog.dev",
+    "tagline": "No-tracking, ad-free minimalist blog",
+    "description": "A tiny, fast blogging platform with no tracking and no ads.",
+    "categories": ["Website Builder", "Writing"],
+    "tags": ["blog", "博客", "极简", "markdown", "写作", "个人网站", "无广告", "隐私", "网站搭建", "不追踪 极简博客"],
+    "pricing": "freemium",
+    "platforms": ["web"]
+  },
+  {
+    "id": "gumroad",
+    "name": "Gumroad",
+    "url": "https://gumroad.com",
+    "tagline": "The easiest way to sell digital products",
+    "description": "Sell ebooks, courses, templates and software licenses with built-in payments.",
+    "categories": ["E-commerce"],
+    "tags": ["sell digital products", "卖数字产品", "收款", "支付", "电子书", "课程", "模板", "license", "授权码", "payments", "电商", "电商收款"],
+    "pricing": "commission",
+    "platforms": ["web"]
+  },
+  {
+    "id": "nomad-list",
+    "name": "Nomad List",
+    "url": "https://nomads.com",
+    "tagline": "Pick cities as a digital nomad",
+    "description": "Compare cities for remote workers by cost of living, internet speed, safety and more.",
+    "categories": ["Lifestyle"],
+    "tags": ["digital nomad", "数字游民", "远程工作", "remote work", "城市", "旅居", "生活成本", "旅行", "生活", "数字游民 选城市"],
+    "pricing": "freemium",
+    "platforms": ["web"]
+  },
+  {
+    "id": "remote-ok",
+    "name": "Remote OK",
+    "url": "https://remoteok.com",
+    "tagline": "Remote job board",
+    "description": "Job board for remote jobs across engineering, design, marketing and more.",
+    "categories": ["Jobs"],
+    "tags": ["remote jobs", "远程工作", "远程岗位", "招聘", "求职", "找工作", "job board", "招聘求职", "远程工作招聘板"],
+    "pricing": "free",
+    "platforms": ["web"]
+  },
+  {
+    "id": "photo-ai",
+    "name": "Photo AI",
+    "url": "https://photoai.com",
+    "tagline": "AI-generated photos of yourself",
+    "description": "Upload selfies and generate AI headshots, avatars and photo shoots.",
+    "categories": ["AI"],
+    "tags": ["AI photo", "AI 写真", "头像", "职业照", "证件照", "avatar", "AI 生成图片", "headshot", "AI 写真照片"],
+    "pricing": "paid",
+    "platforms": ["web"]
+  },
+  {
+    "id": "pika-style",
+    "name": "Pika (pika.style)",
+    "url": "https://pika.style",
+    "tagline": "Turn screenshots into beautiful images",
+    "description": "Add backgrounds, frames and mockups to screenshots for social posts and docs.",
+    "categories": ["Design"],
+    "tags": ["screenshot beautifier", "美化截图", "截图美化", "mockup", "样机", "配图", "社交媒体", "设计", "设计绘图", "截图 漂亮 展示图"],
+    "pricing": "freemium",
+    "platforms": ["web"]
+  },
+  {
+    "id": "uptime-kuma",
+    "name": "Uptime Kuma",
+    "url": "https://github.com/louislam/uptime-kuma",
+    "tagline": "Self-hosted uptime monitoring",
+    "description": "Open-source, self-hosted monitoring for websites and services, with alerts and status pages.",
+    "categories": ["Developer Tools"],
+    "tags": ["uptime monitoring", "网站监控", "宕机告警", "监控", "status page", "状态页", "自托管", "self-hosted", "开源", "open source", "告警", "开发者工具", "自托管 网站可用性监控"],
+    "pricing": "free",
+    "platforms": ["self-hosted"]
+  },
+  {
+    "id": "pocketbase",
+    "name": "PocketBase",
+    "url": "https://pocketbase.io",
+    "tagline": "Open-source backend in a single file",
+    "description": "Open-source backend in one executable: database, auth, file storage and realtime API.",
+    "categories": ["Developer Tools"],
+    "tags": ["backend", "后端", "BaaS", "数据库", "database", "auth", "用户登录", "认证", "开源", "open source", "firebase alternative", "MVP", "开发者工具", "单文件 开源后端"],
+    "pricing": "free",
+    "platforms": ["self-hosted"]
+  },
+  {
+    "id": "obsidian",
+    "name": "Obsidian",
+    "url": "https://obsidian.md",
+    "tagline": "Local-first Markdown notes and knowledge base",
+    "description": "Local-first Markdown note-taking app with backlinks and graph view.",
+    "categories": ["Notes & Knowledge"],
+    "tags": ["notes", "笔记", "知识库", "知识管理", "双向链接", "markdown", "第二大脑", "second brain", "本地优先", "local-first", "笔记知识管理", "本地优先 Markdown 笔记"],
+    "pricing": "freemium",
+    "platforms": ["macos", "windows", "linux", "ios", "android"]
+  }
+]
