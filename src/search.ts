@@ -133,7 +133,8 @@ export class ProductIndex {
 
 /** Tokens of the product named in "X alternative(s)" / "alternative(s) to|for X", if any */
 export function alternativeTarget(q: string): string[] {
-  const m = q.match(/alternatives?\s+(?:to|for)\s+([^,.?!]+)/) ?? q.match(/(?:^|[,.?!]\s*)([^,.?!]+?)\s+alternatives?\b/);
+  // a dot ends a sentence only when followed by a space, so "cal.com alternative" keeps "cal.com"
+  const m = q.match(/alternatives?\s+(?:to|for)\s+((?:[^,?!.]|\.(?!\s|$))+)/) ?? q.match(/(?:^|[,?!]\s*|\.\s+)((?:[^,?!.]|\.(?!\s|$))+?)\s+alternatives?\b/);
   if (!m) return [];
   return tokenize(m[1], { stripFillers: true }).slice(0, 4);
 }

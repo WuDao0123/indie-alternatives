@@ -34,7 +34,8 @@ test("English queries match", () => {
   assert.equal(top("schedule twitter threads").hits[0].product.id, "typefully");
   assert.equal(top("scrolling screenshot app for mac").hits[0].product.id, "shottr");
   assert.ok(top("sell ebooks and courses online").hits.slice(0, 3).every((h) => ["E-commerce", "Payments", "Education"].some((c) => h.product.categories.includes(c))));
-  assert.ok(top("is there an app to turn meeting recordings into notes").matched === false);
+  // the catalog now covers AI meeting notes
+  assert.ok(["tldv", "fireflies", "granola", "otter"].some((id) => inTop("is there an app to turn meeting recordings into notes", id)));
 });
 
 test("English word variants and hyphenated words match", () => {
@@ -71,6 +72,11 @@ test("\"alternative to X\" with X in the catalog finds products like X", () => {
   assert.ok(r.matched && r.hits.length >= 3);
   assert.ok(r.hits.slice(0, 3).every((h) => h.product.categories.includes("Analytics") && h.product.id !== "plausible"));
   assert.ok(top("gumroad alternative").hits.every((h) => h.product.id !== "gumroad"));
+  // product names with dots; "monday.com" also matches tags written as "monday alternative"
+  assert.ok(top("what is a good alternative to monday.com? thanks").hits.slice(0, 3).every((h) => h.product.categories.some((c) => /Project|Task|Productivity/.test(c))));
+  const cal = top("cal.com alternative");
+  assert.ok(cal.hits.length >= 3 && cal.hits.every((h) => h.product.id !== "cal-com"), cal.hits.map((h) => h.product.id).join(","));
+  assert.ok(top("is there an alternative to cal.com? something cheaper").hits.every((h) => h.product.id !== "cal-com"));
 });
 
 test("\"alternative to X\" queries match", () => {

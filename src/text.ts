@@ -11,7 +11,7 @@ const FILLERS = [
 const EN_STOP = new Set([
   "a", "an", "the", "is", "are", "there", "any", "tool", "tools", "app", "apps", "that", "can", "to",
   "for", "me", "i", "my", "want", "need", "something", "which", "what", "help", "with", "of", "and", "or",
-  "do", "does", "lets", "let", "some", "good", "best", "software", "alternative", "alternatives", "similar", "like", "instead",
+  "do", "does", "lets", "let", "some", "good", "best", "software", "alternative", "alternatives", "similar", "like", "instead", "thanks", "thank", "please", "pls", "hi", "hello", "hey", "you", "know", "recommend", "suggest", "looking", "find", "free", "cheap", "cheaper", "better", "really", "just", "could", "would",
 ]);
 
 export function normalize(text: string): string {
@@ -51,6 +51,9 @@ export function analyze(text: string, { stripFillers = false } = {}): Analyzed {
       if (!clean || (stripFillers && EN_STOP.has(clean))) continue;
       for (let i = 0; i < clean.length; i++) content.add(at + i);
       tokens.push({ text: stem(clean), start: at, end: at + clean.length });
+      // domain-style names: "monday.com" also matches "monday"
+      const dom = clean.match(/^([a-z0-9-]{2,})\.(com|io|so|app|ai|dev|co|net|org|me|to|tv|sh|xyz|cc|gg|fm|ly|page|site)$/);
+      if (dom) tokens.push({ text: stem(dom[1]), start: at, end: at + dom[1].length });
       // also index the parts of hyphenated words: "no-code" → "no", "code"; "self-hosted" → "self", "host"
       if (clean.includes("-")) {
         let off = at;
