@@ -50,6 +50,21 @@ export const MIGRATIONS: Record<string, string> = {
   "0002_need_kind.sql": `-- "missing": nothing exists; "partial": tools came back but none fit (NULL = missing, for rows before this column)
 ALTER TABLE needs ADD COLUMN kind TEXT;
 `,
+  "0003_reporters.sql": `-- Count distinct people, not requests. reporter = hash(daily random salt + IP); the salt is deleted after its day,
+-- so a reporter code can't be traced back to an IP or linked across days. channel = web | mcp | rest | cli.
+ALTER TABLE needs ADD COLUMN reporter TEXT;
+ALTER TABLE needs ADD COLUMN channel TEXT;
+CREATE TABLE IF NOT EXISTS salts (
+  day TEXT PRIMARY KEY,
+  salt TEXT NOT NULL
+);
+-- Needs an admin hid from the public board (spam, abuse); by fingerprint of the need text
+CREATE TABLE IF NOT EXISTS hidden_needs (
+  fingerprint TEXT PRIMARY KEY,
+  day TEXT NOT NULL,
+  note TEXT
+);
+`,
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -60,8 +75,8 @@ export class SqlNeedStore implements NeedStore {
   constructor(private db: SqlDatabase) {}
   async append(r: NeedRecord): Promise<void> {
     await this.db
-      .prepare("INSERT INTO needs (id, need, category, platform, budget, day, fingerprint, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(r.id, r.need, r.category ?? null, r.platform ?? null, r.budget ?? null, r.day, r.fingerprint, r.kind === "partial" ? "partial" : null)
+      .prepare("INSERT INTO needs (id, need, category, platform, budget, day, fingerprint, kind, reporter, channel) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(r.id, r.need, r.category ?? null, r.platform ?? null, r.budget ?? null, r.day, r.fingerprint, r.kind === "partial" ? "partial" : null, r.reporter ?? null, r.channel ?? null)
       .run();
   }
   async list(): Promise<NeedRecord[]> {
@@ -69,7 +84,36 @@ export class SqlNeedStore implements NeedStore {
     return results.map((r) => ({
       id: r.id, need: r.need, category: undef(r.category), platform: undef(r.platform), budget: undef(r.budget), day: r.day, fingerprint: r.fingerprint,
       ...(r.kind === "partial" ? { kind: "partial" as const } : {}),
+      ...(r.reporter ? { reporter: r.reporter } : {}),
+      ...(r.channel ? { channel: r.channel } : {}),
     }));
+  }
+  async hidden(): Promise<Set<string>> {
+    const { results } = await this.db.prepare("SELECT fingerprint FROM hidden_needs").all<{ fingerprint: string }>();
+    return new Set(results.map((r) => r.fingerprint));
+  }
+  async hide(fingerprints: string[], note?: string): Promise<void> {
+    for (const fp of fingerprints)
+      await this.db.prepare("INSERT INTO hidden_needs (fingerprint, day, note) VALUES (?, ?, ?) ON CONFLICT (fingerprint) DO NOTHING").bind(fp, today(), note ?? null).run();
+  }
+  async unhide(fingerprints: string[]): Promise<void> {
+    for (const fp of fingerprints) await this.db.prepare("DELETE FROM hidden_needs WHERE fingerprint = ?").bind(fp).run();
+  }
+}
+
+/** One random salt per day, deleted once the day is over: reporter codes from past days can't be reversed */
+export class SqlSaltStore {
+  private cached?: { day: string; salt: string };
+  constructor(private db: SqlDatabase) {}
+  async today(): Promise<string> {
+    const day = today();
+    if (this.cached?.day === day) return this.cached.salt;
+    const fresh = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    await this.db.prepare("INSERT INTO salts (day, salt) VALUES (?, ?) ON CONFLICT (day) DO NOTHING").bind(day, fresh).run();
+    await this.db.prepare("DELETE FROM salts WHERE day < ?").bind(day).run();
+    const row = await this.db.prepare("SELECT salt FROM salts WHERE day = ?").bind(day).first<{ salt: string }>();
+    this.cached = { day, salt: row?.salt ?? fresh };
+    return this.cached.salt;
   }
 }
 

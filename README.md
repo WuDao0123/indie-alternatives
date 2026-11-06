@@ -57,7 +57,8 @@ The service tells the AI how to use it (MCP `instructions`, OpenAPI `info.descri
 ## Privacy
 
 - A record contains **only**: a random id, the need text, optional domain / platform / budget, the date (day only), and a fingerprint used to group similar needs.
-- **Never stored**: user identity, conversation content, IP, User-Agent, exact timestamps. The HTTP server keeps no access log.
+- **Never stored**: user identity, conversation content, IP addresses, User-Agent, exact timestamps. The HTTP server keeps no access log.
+- **Counting people, not requests**: each need carries a short code = hash(random salt of the day + IP). The salt is deleted when the day ends, so codes can't be reversed or linked across days. The same person on the same day counts once on the public board. Need logging is also rate-limited at the edge (10 per minute per address; nothing stored).
 - The server redacts again before writing: emails, phone numbers, links, IPs, ID and card numbers, @handles, messenger IDs and "my name is …" are replaced with placeholders like `[email]` and `[phone]`.
 - The tool description asks the AI to rewrite the need generically first, and not to log if the user declines.
 - **Local installs** (`npx indie-alternatives-mcp`, the CLI) read the latest catalog from `https://indiealternatives.dev/catalog.json` (falling back to the bundled copy) and send unmet needs to `https://indiealternatives.dev/api/needs`, so needs from every install are pooled for makers. Only the redacted need fields are sent. Set `INDIE_ALT_OFFLINE=1` to keep everything on your machine.

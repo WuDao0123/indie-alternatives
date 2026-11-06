@@ -27,6 +27,9 @@ table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 th{color:var(--muted);font-weight:600}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr.off td{opacity:.45}tr.off td:last-child{opacity:1}
+.flag{display:inline-block;font-size:12px;padding:1px 7px;border-radius:999px;background:var(--code);color:var(--err);white-space:nowrap;margin:1px 0}
+button.hide{padding:3px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg);font:inherit;font-size:13px;cursor:pointer}
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
 .scroll{overflow-x:auto}
 #login{max-width:420px}
@@ -154,11 +157,18 @@ async function load() {
   const top = (re, n) => Object.entries(t).filter(([k]) => re.test(k)).map(([k, v]) => ({ k: k.replace(re, ""), v })).sort((a, b) => b.v - a.v).slice(0, n);
   $("#t-sources").innerHTML = table(top(/^source:/, 20), [{ h: "App (source)", f: (r) => r.k }, { h: "Needs", n: 1, f: (r) => r.v }]);
   $("#t-clients").innerHTML = table(top(/^client:/, 20), [{ h: "MCP client", f: (r) => r.k }, { h: "Connections", n: 1, f: (r) => r.v }]);
-  $("#t-needs").innerHTML = table(needs.needs, [
-    { h: "Need", f: (r) => r.need }, { h: "Type", f: (r) => (r.kind === "partial" ? "doesn't fit" : "missing") },
-    { h: "Category", f: (r) => (r.categories || []).join(", ") }, { h: "Last seen", f: (r) => r.last_seen }, { h: "Asked", n: 1, f: (r) => r.count },
-  ]);
-  $("#needs-total").textContent = fmt(needs.total_records) + " records, " + fmt(needs.distinct_needs) + " distinct (all of them, including those asked fewer than 3 times; private)";
+  $("#t-needs").innerHTML = needs.needs.length ? '<div class="scroll"><table><thead><tr><th>Need</th><th>Type</th><th>Category</th><th>Last seen</th><th class="n">People</th><th class="n">Requests</th><th>Via</th><th>Check</th><th></th></tr></thead><tbody>' +
+    needs.needs.map((r, i) => '<tr' + (r.hidden ? ' class="off"' : "") + "><td>" + esc(r.need) + "</td><td>" + (r.kind === "partial" ? "doesn't fit" : "missing") + "</td><td>" + esc((r.categories || []).join(", ")) +
+      "</td><td>" + esc(r.last_seen) + '</td><td class="n">' + fmt(r.count) + '</td><td class="n">' + fmt(r.records) + "</td><td>" + esc(Object.entries(r.channels || {}).map(([k, v]) => k + " " + v).join(", ")) +
+      "</td><td>" + (r.flags || []).map((f) => '<span class="flag">⚠ ' + esc(f) + "</span>").join(" ") +
+      '</td><td><button type="button" class="hide" data-i="' + i + '">' + (r.hidden ? "Unhide" : "Hide") + "</button></td></tr>").join("") + "</tbody></table></div>" : '<p class="muted">Nothing yet.</p>';
+  document.querySelectorAll("#t-needs button.hide").forEach((b) => b.addEventListener("click", async () => {
+    const r = needs.needs[b.dataset.i];
+    b.disabled = true;
+    const res = await fetch("/api/admin/needs/" + (r.hidden ? "unhide" : "hide"), { method: "POST", headers: { authorization: "Bearer " + token, "content-type": "application/json" }, body: JSON.stringify({ fingerprints: r.fingerprints }) });
+    if (res.ok) load(); else { b.disabled = false; $("#err").textContent = "Could not update: HTTP " + res.status; }
+  }));
+  $("#needs-total").textContent = fmt(needs.total_records) + " requests, " + fmt(needs.distinct_needs) + " distinct needs. People = one per person per day. All needs, including those below the public threshold and hidden ones (greyed out); private.";
 }
 load();
 `;

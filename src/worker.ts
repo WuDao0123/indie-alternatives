@@ -2,7 +2,7 @@
 import { CfWorkerJsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/cfworker";
 import { createApp } from "./app.js";
 import { MergedSource, StaticSource } from "./catalog.js";
-import { SqlNeedStore, SqlProductStore, SqlStatsStore, SqlSubmissionStore } from "./sql.js";
+import { SqlNeedStore, SqlProductStore, SqlSaltStore, SqlStatsStore, SqlSubmissionStore } from "./sql.js";
 import type { SqlDatabase } from "./types.js";
 import bundled from "../data/products.json" with { type: "json" };
 
@@ -13,6 +13,8 @@ export interface Env {
   /** wrangler secret put ADMIN_TOKEN */
   ADMIN_TOKEN?: string;
   MCP_AUTH_TOKEN?: string;
+  /** Workers rate-limit binding (wrangler.jsonc "ratelimits"): caps need logging per client address */
+  NEED_LIMITER?: { limit(opts: { key: string }): Promise<{ success: boolean }> };
 }
 
 let cached: { db: SqlDatabase; app: (req: Request) => Promise<Response> } | undefined;
@@ -28,6 +30,7 @@ function appFor(env: Env) {
       stats: new SqlStatsStore(env.DB),
       submissions: new SqlSubmissionStore(env.DB),
       products,
+      salts: new SqlSaltStore(env.DB),
       exposeNeedsList: env.HIDE_NEEDS_LIST !== "1",
     },
     {
@@ -35,6 +38,7 @@ function appFor(env: Env) {
       authToken: env.MCP_AUTH_TOKEN,
       adminToken: env.ADMIN_TOKEN,
       jsonSchemaValidator: new CfWorkerJsonSchemaValidator(),
+      needLimiter: env.NEED_LIMITER ? async (key) => (await env.NEED_LIMITER!.limit({ key })).success : undefined,
     },
   );
   cached = { db: env.DB, app };

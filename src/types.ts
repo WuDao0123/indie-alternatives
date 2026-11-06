@@ -33,6 +33,10 @@ export interface NeedRecord {
   fingerprint: string;
   /** "missing": no tool exists (default); "partial": tools came back but none fit */
   kind?: NeedKind;
+  /** hash(daily salt + IP): the same person on the same day counts once; can't be reversed once the salt is gone */
+  reporter?: string;
+  /** how it arrived: web | mcp | rest | cli */
+  channel?: string;
 }
 export type NeedKind = "missing" | "partial";
 
@@ -40,6 +44,10 @@ export interface NeedStore {
   readonly name: string;
   append(record: NeedRecord): Promise<void>;
   list(): Promise<NeedRecord[]>;
+  /** fingerprints an admin hid from the public board */
+  hidden?(): Promise<Set<string>>;
+  hide?(fingerprints: string[], note?: string): Promise<void>;
+  unhide?(fingerprints: string[]): Promise<void>;
 }
 
 /** Anonymous daily counters: only (day, key) → count, never anything about a person */

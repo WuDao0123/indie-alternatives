@@ -329,3 +329,55 @@ test("localized product pages and demand board", async () => {
   assert.match(map, /\/pt\/product\/docmost<\/loc>/);
   assert.match(map, /\/de\/wanted<\/loc>/);
 });
+
+test("fake demand: one address flooding counts once a day; rate limit; spam; admin can hide", async () => {
+  const { SqlSaltStore } = await import("../src/sql.js");
+  const db2 = await openSqlite(":memory:");
+  const needs2 = new SqlNeedStore(db2);
+  let allowance = 1000;
+  const app2 = createApp(
+    { catalog: deps.catalog, needs: needs2, stats: new SqlStatsStore(db2), salts: new SqlSaltStore(db2) },
+    { publicUrl: B, adminToken: "secret", publicNeedsMin: 3, needLimiter: async () => allowance-- > 0 },
+  );
+  const post = (need: string, ip: string) =>
+    app2(new Request(B + "/api/needs", { method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": ip }, body: JSON.stringify({ need }) }));
+  const board = async () => (await (await app2(new Request(B + "/api/wanted"))).json()) as { needs: { need: string; count: number }[] };
+
+  // one script, one address, 20 times: still one person
+  for (let i = 0; i < 20; i++) await post("tool that rates my cat's outfits", "203.0.113.7");
+  assert.ok(!(await board()).needs.some((n) => n.need.includes("cat's outfits")), "one person is never enough to be public");
+
+  // three different people: public, counted as 3 (not 22)
+  await post("tool that rates my cat's outfits", "198.51.100.1");
+  await post("tool that rates my cat's outfits", "198.51.100.2");
+  const n = (await board()).needs.find((x) => x.need.includes("cat's outfits"));
+  assert.equal(n?.count, 3);
+
+  // the stored code is not the address, and the salt table only keeps today
+  const rows = await needs2.list();
+  assert.ok(rows.every((r) => r.reporter && !r.reporter.includes("203.0.113") && r.channel === "rest"));
+  const salts = await db2.prepare("SELECT day FROM salts").all();
+  assert.equal(salts.results.length, 1);
+
+  // admin sees the flag, hides it, it leaves the public board, unhide brings it back
+  const auth = { authorization: "Bearer secret", "content-type": "application/json" };
+  const admin = await (await app2(new Request(B + "/api/admin/needs", { headers: auth }))).json();
+  const g = admin.needs.find((x: any) => x.need.includes("cat's outfits"));
+  assert.equal(g.records, 22);
+  assert.ok(g.flags.some((f: string) => /requests from 3 people/.test(f)));
+  await app2(new Request(B + "/api/admin/needs/hide", { method: "POST", headers: auth, body: JSON.stringify({ fingerprints: g.fingerprints }) }));
+  assert.ok(!(await board()).needs.some((x) => x.need.includes("cat's outfits")));
+  await app2(new Request(B + "/api/admin/needs/unhide", { method: "POST", headers: auth, body: JSON.stringify({ fingerprints: g.fingerprints }) }));
+  assert.ok((await board()).needs.some((x) => x.need.includes("cat's outfits")));
+
+  // spam is never stored
+  const spam = await (await post("best casino bonus app", "198.51.100.9")).json();
+  assert.equal(spam.logged, false);
+
+  // rate limit: 429, nothing stored
+  allowance = 0;
+  const before = (await needs2.list()).length;
+  const limited = await post("a perfectly normal need for invoices", "198.51.100.10");
+  assert.equal(limited.status, 429);
+  assert.equal((await needs2.list()).length, before);
+});

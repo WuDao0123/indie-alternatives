@@ -21,7 +21,7 @@ export interface PublicNeed {
 
 const hit = (p: Product) => productCard(p);
 
-const PRIVACY = `<p class="count">Searches that find nothing are saved anonymously (only the text, contact details stripped, and the date) so independent developers can see what people need. <a href="/wanted">See what people are looking for</a>.</p>`;
+const PRIVACY = `<p class="count">Searches that find nothing are saved anonymously (only the text, contact details stripped, the date, and a daily code that can't be traced back to you) so independent developers can see what people need. <a href="/wanted">See what people are looking for</a>.</p>`;
 
 export function searchPage(base: string, q: string, r: { matched: boolean; hits: Product[]; logged: boolean; reported?: boolean }): string {
   const body = !q
@@ -87,7 +87,7 @@ ${missing.length ? needList(missing) : empty}
 ${partial.length ? needList(partial) : empty}
 <p class="muted">${totals.records} searches logged so far, ${totals.distinct} distinct needs (similar wordings are grouped). Only needs asked ${min}+ times are shown. Developers: the same list as JSON is at <a href="/api/wanted">/api/wanted</a>${category ? ` (add <code>?category=${esc(category)}</code>)` : ""}.</p>
 <h2>How this works</h2>
-<p class="muted">When a search here or in an AI assistant finds nothing, or someone says none of the results fit, we save only the need text (contact details stripped), a rough category and the date. No accounts, no IP addresses, no conversation content.</p>`,
+<p class="muted">When a search here or in an AI assistant finds nothing, or someone says none of the results fit, we save only the need text (contact details stripped), a rough category and the date. To count people rather than clicks, we also keep a short code made from your IP address and a random key that is replaced every day; once the day is over the key is deleted, so the code can't be traced back to you or linked to other days. We never store the IP address itself, accounts or conversation content.</p>`,
     {
       canonical: category ? `${base}/wanted?category=${encodeURIComponent(category)}` : base + "/wanted",
       noindex: Boolean(category) && needs.length === 0,

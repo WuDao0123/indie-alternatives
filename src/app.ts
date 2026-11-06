@@ -16,7 +16,7 @@ import { randomUUID } from "node:crypto";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { jsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/types.js";
 import { createServer } from "./server.js";
-import { NotFoundError, TOOLS, groupNeeds, ValidationError, count, enabledTools, indexFor, invalidateIndex, runTool, type Deps } from "./core.js";
+import { NotFoundError, TOOLS, groupNeeds, groupNeedsAdmin, ValidationError, count, enabledTools, indexFor, invalidateIndex, runTool, type Deps } from "./core.js";
 import { ROUTES, coerceArgs, functionDefs, llmsTxt, openApiSpec, type FunctionFormat } from "./rest.js";
 import { cleanSubmittedProduct, slugify, urlKey } from "./catalog.js";
 import { redact } from "./privacy.js";
@@ -31,6 +31,8 @@ import type { Product, ProductStore, Submission, SubmissionStatus, SubmissionSto
 export interface AppDeps extends Deps {
   submissions?: SubmissionStore;
   products?: ProductStore;
+  /** today's random salt for reporter codes (deleted after the day) */
+  salts?: { today(): Promise<string> };
 }
 
 export interface AppConfig {
@@ -44,6 +46,8 @@ export interface AppConfig {
   jsonSchemaValidator?: jsonSchemaValidator;
   /** a need is shown publicly on the home page only after this many requests (k-anonymity) */
   publicNeedsMin?: number;
+  /** edge rate limit for logging needs, keyed by client address; true = allowed (Workers rate-limit binding) */
+  needLimiter?: (key: string) => Promise<boolean>;
 }
 
 class ConflictError extends Error {}
@@ -124,7 +128,8 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
   /** needs asked at least publicNeedsMin times: safe to show publicly */
   async function publicNeeds(limit = 10, category?: string) {
     const all = await deps.needs.list();
-    const groups = groupNeeds(all).filter((n) => n.count >= publicNeedsMin);
+    const hidden = (await deps.needs.hidden?.()) ?? new Set<string>();
+    const groups = groupNeeds(all, { hidden }).filter((n) => n.count >= publicNeedsMin);
     // categories offered as filters: only those of needs that are public anyway
     const categories = [...new Set(groups.flatMap((g) => g.categories))].sort();
     const shown = category ? groups.filter((g) => g.categories.some((c) => c.toLowerCase() === category.toLowerCase())) : groups;
@@ -167,7 +172,8 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     const fp = fingerprint(q).slice(0, 8);
     const seen = loggedBefore(req);
     if (seen.has(fp)) return { logged: true, headers: {} };
-    await runTool(deps, "log_unmet_need", { need: q, ...extra }, "web");
+    const r = (await runTool(forRequest(req), "log_unmet_need", { need: q, ...extra }, "web")) as { logged: boolean };
+    if (!r.logged) return { logged: false, headers: {} };
     await count(deps, [key]);
     return { logged: true, headers: rememberLogged(seen, fp) };
   }
@@ -191,13 +197,35 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     return html(searchPage(base, q, { matched: r.matched, hits: shown, logged: logged.logged }), 200, logged.headers);
   }
 
+  /** the client address, only ever used transiently: hashed with today's salt, and as the rate-limit key */
+  const clientIp = (req: Request) => req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "";
+
+  async function reporterCode(ip: string): Promise<string | undefined> {
+    if (!ip || !deps.salts) return undefined;
+    const salt = await deps.salts.today();
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${salt}|${ip}`));
+    return [...new Uint8Array(digest)].slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  /** deps for one request: who (as a daily code) and whether they may log more needs right now */
+  function forRequest(req: Request): AppDeps {
+    const ip = clientIp(req);
+    return {
+      ...deps,
+      ctx: {
+        reporter: () => reporterCode(ip),
+        allowNeed: config.needLimiter && ip ? () => config.needLimiter!(ip) : undefined,
+      },
+    };
+  }
+
   async function handleMcp(req: Request): Promise<Response> {
     if (req.method !== "POST") return json({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed" }, id: null }, 405);
     const body = await readJson(req);
     const client = clientLabel(body);
     if (client) await count(deps, ["mcp:initialize", `client:${client}`]);
     // stateless: a fresh server + transport per request, so it scales horizontally and runs on serverless
-    const server = createServer(deps, { jsonSchemaValidator: config.jsonSchemaValidator });
+    const server = createServer(forRequest(req), { jsonSchemaValidator: config.jsonSchemaValidator });
     const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     await server.connect(transport);
     try {
@@ -220,13 +248,14 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
   async function handleApi(req: Request, url: URL): Promise<Response> {
     const method = req.method.toLowerCase();
     const call = url.pathname.match(/^\/api\/call\/([\w-]+)$/);
-    if (call && method === "post") return json(await runTool(deps, call[1], await readJson(req), "rest"));
+    if (call && method === "post") return json(await runTool(forRequest(req), call[1], await readJson(req), "rest"));
     const hit = matchRoute(method, url.pathname);
     if (!hit) return json({ error: "No such endpoint, see /openapi.json" }, 404);
     const tool = enabledTools(deps).find((t) => t.name === hit.route.tool);
     if (!tool) return json({ error: "This endpoint is disabled" }, 404);
     const args = hit.route.params === "body" ? await readJson(req) : coerceArgs(tool, { ...Object.fromEntries(url.searchParams), ...hit.pathArgs });
-    return json(await runTool(deps, tool.name, args, "rest"));
+    const result = (await runTool(forRequest(req), tool.name, args, "rest")) as { rate_limited?: boolean };
+    return json(result, result?.rate_limited ? 429 : 200);
   }
 
   // ---------- maker submissions ----------
@@ -293,8 +322,20 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
       return json({ days, totals, by_day: byDay });
     }
     if (m === "GET" && p === "/needs") {
-      const limit = Number(url.searchParams.get("limit") ?? 100) || 100;
-      return json(await TOOLS.find((t) => t.name === "list_unmet_needs")!.run(deps, { limit: Math.min(limit, 1000) }));
+      const limit = Math.min(Number(url.searchParams.get("limit") ?? 100) || 100, 1000);
+      const all = await deps.needs.list();
+      const groups = groupNeedsAdmin(all, { hidden: (await deps.needs.hidden?.()) ?? new Set() });
+      return json({ total_records: all.length, distinct_needs: groups.length, needs: groups.slice(0, limit) });
+    }
+    const hideAction = p.match(/^\/needs\/(hide|unhide)$/);
+    if (m === "POST" && hideAction) {
+      if (!deps.needs.hide || !deps.needs.unhide) return json({ error: "Hiding is not supported by this need store" }, 404);
+      const body = ((await readJson(req)) ?? {}) as { fingerprints?: unknown; note?: unknown };
+      const fps = Array.isArray(body.fingerprints) ? body.fingerprints.filter((f): f is string => typeof f === "string" && /^[0-9a-f]{16}$/.test(f)) : [];
+      if (!fps.length) throw new ValidationError("fingerprints: a list of need fingerprints is required");
+      if (hideAction[1] === "hide") await deps.needs.hide(fps, typeof body.note === "string" ? body.note.slice(0, 200) : undefined);
+      else await deps.needs.unhide(fps);
+      return json({ ok: true, [hideAction[1] === "hide" ? "hidden" : "unhidden"]: fps.length });
     }
     if (!deps.submissions || !deps.products) return json({ error: "Submissions are not enabled" }, 404);
     if (m === "GET" && p === "/submissions") {

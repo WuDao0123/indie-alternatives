@@ -183,7 +183,7 @@ ${client("Cursor, Windsurf, VS Code, Gemini CLI and other MCP clients", `<pre>${
 ${client("Custom GPTs, Dify, n8n, your own agent", `<p>Import <a href="/openapi.json">${esc(base)}/openapi.json</a>, or get function-calling definitions from <code>${esc(base)}/functions.json?format=openai|anthropic|gemini</code>. More in the <a href="/developers">developer guide</a>.</p>`)}
 
 <h2>Privacy</h2>
-<p class="muted">When a search on this site finds nothing, or no tool fits in an AI assistant, the need is logged so makers can see demand. We store only the need text (with contact details stripped), an optional category and the date. No accounts, no IP addresses, no conversation content.</p>`,
+<p class="muted">When a search on this site finds nothing, or no tool fits in an AI assistant, the need is logged so makers can see demand. We store only the need text (with contact details stripped), an optional category and the date. To count people rather than clicks, we also keep a short code made from your IP address and a random key that is replaced every day; once the day is over the key is deleted, so the code can't be traced back to you or linked to other days. We never store the IP address itself, accounts or conversation content.</p>`,
     { canonical: base + "/", hideSearch: true, alternates: opts.alternates },
   );
 }

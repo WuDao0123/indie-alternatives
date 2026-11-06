@@ -24,7 +24,21 @@ export interface Deps {
   exposeNeedsList?: boolean;
   /** optional anonymous daily counters (hosted service) */
   stats?: StatsStore;
+  /** per request, set by the HTTP app */
+  ctx?: RequestContext;
 }
+
+export interface RequestContext {
+  /** hash(daily salt + IP), see NeedRecord.reporter; computed only when a need is logged */
+  reporter?: () => Promise<string | undefined>;
+  channel?: Channel;
+  /** false when this address has logged too many needs recently (edge rate limit) */
+  allowNeed?: () => Promise<boolean>;
+}
+
+/** obvious spam and abuse: never stored (the board is public) */
+const SPAM = /\b(casino|betting|viagra|cialis|porn|xxx|escort|onlyfans|crypto ?pump|airdrop|forex signals?|loan offer|seo backlinks?|buy followers|whatsapp \+?\d)\b|(.)\2{7,}/i;
+export const isSpam = (text: string) => SPAM.test(text);
 
 /** How a tool call arrived; only used for anonymous counters */
 export type Channel = "mcp" | "rest" | "cli" | "web";
@@ -140,11 +154,14 @@ export const TOOLS: ToolDef[] = [
     title: "Log an unmet need anonymously",
     description:
       "Call when no tool in the catalog meets the user's need. Records the need anonymously so indie makers can discover what to build. " +
-      "Send only the need itself: no names, company names, contact details, links or account handles. The server redacts again and never stores identity, IP or exact time.",
+      "Send only the need itself: no names, company names, contact details, links or account handles. The server redacts again and never stores identity, IP addresses or exact time (only a daily, non-reversible code to count distinct people).",
     input: logNeedInput,
     readOnly: false,
     async run(deps, input) {
-      const record = makeNeedRecord(input);
+      if (isSpam(input.need)) return { logged: false, message: "Not logged: this doesn't look like a software need." };
+      if (deps.ctx?.allowNeed && !(await deps.ctx.allowNeed()))
+        return { logged: false, rate_limited: true, message: "Not logged: too many needs from this address recently. Try again later." };
+      const record = { ...makeNeedRecord(input), reporter: await deps.ctx?.reporter?.(), channel: deps.ctx?.channel };
       await deps.needs.append(record);
       if (input.source) await count(deps, [`source:${String(input.source).toLowerCase()}`]);
       const similar = (await deps.needs.list()).filter((r) => r.fingerprint === record.fingerprint).length;
@@ -167,11 +184,21 @@ export const TOOLS: ToolDef[] = [
 
 export interface NeedGroup {
   need: string;
+  /** distinct people: one per reporter per day (records without a reporter count one each) */
   count: number;
   first_seen: string;
   last_seen: string;
   categories: string[];
   kind: NeedKind;
+}
+
+/** what the admin dashboard sees on top: raw records, channels, fingerprints (to hide), and why it looks odd */
+export interface NeedGroupAdmin extends NeedGroup {
+  records: number;
+  channels: Record<string, number>;
+  fingerprints: string[];
+  hidden: boolean;
+  flags: string[];
 }
 
 /** words that carry the need, for comparing phrasings */
@@ -185,36 +212,59 @@ function jaccard(a: Set<string>, b: Set<string>): number {
 
 /**
  * Group needs that say the same thing in different words: same fingerprint, or ≥ 60% shared words.
- * "missing" and "partial" needs are kept apart. Sorted by count, then most recent.
+ * "missing" and "partial" needs are kept apart. Sorted by count (distinct people), then most recent.
  */
-export function groupNeeds(records: NeedRecord[], opts: { keyword?: string; category?: string } = {}): NeedGroup[] {
+export function groupNeedsAdmin(records: NeedRecord[], opts: { keyword?: string; category?: string; hidden?: Set<string> } = {}): NeedGroupAdmin[] {
   const kw = opts.keyword?.toLowerCase();
   const cat = opts.category?.toLowerCase();
-  type G = NeedGroup & { tokens: Set<string>; fps: Set<string>; texts: Map<string, number>; cats: Map<string, number> };
+  type G = NeedGroupAdmin & { tokens: Set<string>; fps: Set<string>; texts: Map<string, number>; cats: Map<string, number>; units: Set<string>; perDay: Map<string, number> };
   const groups: G[] = [];
   for (const r of [...records].sort((a, b) => a.day.localeCompare(b.day))) {
     if (kw && !r.need.toLowerCase().includes(kw)) continue;
     if (cat && (r.category ?? "").toLowerCase() !== cat) continue;
     const kind: NeedKind = r.kind === "partial" ? "partial" : "missing";
     const toks = needTokens(r.need);
-    const g = groups.find((x) => x.kind === kind && (x.fps.has(r.fingerprint) || jaccard(x.tokens, toks) >= 0.6));
-    if (g) {
-      g.count++;
-      g.last_seen = r.day > g.last_seen ? r.day : g.last_seen;
-      g.fps.add(r.fingerprint);
-      g.texts.set(r.need, (g.texts.get(r.need) ?? 0) + 1);
-      if (r.category) g.cats.set(r.category, (g.cats.get(r.category) ?? 0) + 1);
-    } else {
-      groups.push({
-        need: r.need, count: 1, first_seen: r.day, last_seen: r.day, categories: [], kind,
-        tokens: toks, fps: new Set([r.fingerprint]), texts: new Map([[r.need, 1]]), cats: new Map(r.category ? [[r.category, 1]] : []),
-      });
+    let g = groups.find((x) => x.kind === kind && (x.fps.has(r.fingerprint) || jaccard(x.tokens, toks) >= 0.6));
+    if (!g) {
+      g = {
+        need: r.need, count: 0, first_seen: r.day, last_seen: r.day, categories: [], kind, records: 0, channels: {}, fingerprints: [], hidden: false, flags: [],
+        tokens: toks, fps: new Set(), texts: new Map(), cats: new Map(), units: new Set(), perDay: new Map(),
+      };
+      groups.push(g);
+    }
+    g.records++;
+    if (r.day > g.last_seen) g.last_seen = r.day;
+    g.fps.add(r.fingerprint);
+    g.texts.set(r.need, (g.texts.get(r.need) ?? 0) + 1);
+    if (r.category) g.cats.set(r.category, (g.cats.get(r.category) ?? 0) + 1);
+    const ch = r.channel ?? "unknown";
+    g.channels[ch] = (g.channels[ch] ?? 0) + 1;
+    const unit = r.reporter ? `${r.day}:${r.reporter}` : r.id;
+    if (!g.units.has(unit)) {
+      g.units.add(unit);
+      g.perDay.set(r.day, (g.perDay.get(r.day) ?? 0) + 1);
     }
   }
   const top = <K>(m: Map<K, number>) => [...m].sort((a, b) => b[1] - a[1]).map(([k]) => k);
   return groups
-    .map(({ tokens, fps, texts, cats, ...g }) => ({ ...g, need: top(texts)[0], categories: top(cats).slice(0, 3) }))
+    .map(({ tokens, fps, texts, cats, units, perDay, ...g }) => {
+      const count = units.size;
+      const flags: string[] = [];
+      const peak = Math.max(0, ...perDay.values());
+      if (count >= 5 && peak / count >= 0.8) flags.push(`${Math.round((peak / count) * 100)}% on one day`);
+      if (g.records >= 3 * count && g.records >= 6) flags.push(`${g.records} requests from ${count} people`);
+      const api = (g.channels.rest ?? 0) + (g.channels.unknown ?? 0);
+      if (g.records >= 5 && api / g.records >= 0.8) flags.push("mostly via API");
+      return { ...g, count, need: top(texts)[0], categories: top(cats).slice(0, 3), fingerprints: [...fps], hidden: [...fps].some((f) => opts.hidden?.has(f)), flags };
+    })
     .sort((a, b) => b.count - a.count || b.last_seen.localeCompare(a.last_seen));
+}
+
+/** public shape: no fingerprints, raw counts or flags; hidden needs left out */
+export function groupNeeds(records: NeedRecord[], opts: { keyword?: string; category?: string; hidden?: Set<string> } = {}): NeedGroup[] {
+  return groupNeedsAdmin(records, opts)
+    .filter((g) => !g.hidden)
+    .map(({ need, count, first_seen, last_seen, categories, kind }) => ({ need, count, first_seen, last_seen, categories, kind }));
 }
 
 export function enabledTools(deps: Deps): ToolDef[] {
@@ -228,7 +278,7 @@ export async function runTool(deps: Deps, name: string, args: unknown, channel: 
   if (!tool) throw new NotFoundError(`No tool named ${name}`);
   const parsed = z.object(tool.input).safeParse(args ?? {});
   if (!parsed.success) throw new ValidationError(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
-  const result = await tool.run(deps, parsed.data);
+  const result = await tool.run({ ...deps, ctx: { ...deps.ctx, channel } }, parsed.data);
   const keys = [`tool:${name}`, `channel:${channel}`];
   if (name === "search_tools") keys.push(result.matched ? "search:matched" : "search:unmatched", `search:${channel}`);
   await count(deps, keys);
