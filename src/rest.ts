@@ -105,6 +105,10 @@ ${lines.join("\n")}
 - POST ${baseUrl}/api/call/{tool_name} — generic call, the request body is the tool arguments
 
 Example: GET ${baseUrl}/api/search?query=screenshot%20background
+
+## For app and agent developers
+When your app can't do what a user asks: GET /api/search; if matched=false, POST /api/needs {"need": "<generic description>", "source": "<your-app>"}.
+Guide: ${baseUrl}/developers · Public demand board (needs asked 3+ times): ${baseUrl}/api/wanted
 `;
 }
 

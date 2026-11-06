@@ -65,7 +65,7 @@ ${meta.noindex ? `<meta name="robots" content="noindex,follow">` : ""}
 <body><main><div class="top"><a class="brand" href="/">Indie <span>Alternatives</span></a>
 <form class="search" method="get" action="/search" role="search"><input type="search" name="q" value="${esc(q)}" placeholder="What do you need a tool for?" aria-label="Search tools" maxlength="200"><button type="submit">Search</button></form></div>
 ${body}
-<footer>Indie Alternatives · <a href="/wanted">Wanted: what people look for</a> · <a href="/alternatives">Browse alternatives</a> · <a href="/submit">List your product</a> · <a href="/llms.txt">llms.txt</a> · <a href="/openapi.json">OpenAPI</a></footer>
+<footer>Indie Alternatives · <a href="/wanted">Wanted: what people look for</a> · <a href="/alternatives">Browse alternatives</a> · <a href="/developers">For developers</a> · <a href="/submit">List your product</a> · <a href="/llms.txt">llms.txt</a> · <a href="/openapi.json">OpenAPI</a></footer>
 </main></body></html>`;
 }
 

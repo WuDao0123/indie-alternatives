@@ -70,3 +70,69 @@ ${rows}
     { canonical: base + "/wanted" },
   );
 }
+
+/** integration guide for apps, agents and MCP servers that want to forward their users' unmet needs */
+export function developersPage(base: string): string {
+  const js = `// when your app or agent can't do what the user asked:
+const API = "${base}/api";
+
+async function suggestTools(need) {
+  const r = await fetch(\`\${API}/search?query=\${encodeURIComponent(need)}&limit=3\`).then((r) => r.json());
+  if (!r.matched) {
+    // nothing fits: forward the need (generic text only, no user info)
+    await fetch(\`\${API}/needs\`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ need, source: "your-app-name" }),
+    });
+  }
+  return r.results; // [{ name, url, tagline, pricing, ... }] to show your user
+}`;
+  const py = `import json, urllib.parse, urllib.request
+
+API = "${base}/api"
+
+def suggest_tools(need: str):
+    q = urllib.parse.urlencode({"query": need, "limit": 3})
+    r = json.load(urllib.request.urlopen(f"{API}/search?{q}"))
+    if not r["matched"]:
+        body = json.dumps({"need": need, "source": "your-app-name"}).encode()
+        req = urllib.request.Request(f"{API}/needs", body, {"content-type": "application/json"})
+        urllib.request.urlopen(req)
+    return r["results"]`;
+  const curl = `curl -X POST ${base}/api/needs \\
+  -H 'content-type: application/json' \\
+  -d '{"need":"turn voice memos into a weekly journal","source":"your-app-name"}'`;
+  return layout(
+    "For Developers: Forward Unmet Needs · Indie Alternatives",
+    "Two HTTP calls let your app, agent or MCP server recommend indie tools when it can't help, and forward what users asked for to the public demand board.",
+    `<h1>Turn “I can't do that” into a useful answer</h1>
+<p class="lead">When your app, AI agent or MCP server gets a request it can't handle, ask Indie Alternatives. Your user gets a tool that does it. If no tool exists, the need goes on the <a href="/wanted">public demand board</a> that independent developers read when they decide what to build.</p>
+<p>Free, no API key, no sign-up. Two HTTP calls.</p>
+
+<h2>1. Search</h2>
+<pre>GET ${esc(base)}/api/search?query=&lt;what the user wants&gt;&amp;limit=3</pre>
+<p class="muted">Returns <code>matched</code> (is anything a good fit) and <code>results</code> with name, url, tagline, pricing and platforms.</p>
+
+<h2>2. Forward the need when nothing fits</h2>
+<pre>${esc(curl)}</pre>
+<p class="muted"><code>source</code> is optional: a short name for your app. We only count it (so we can see which apps send demand); it is never shown next to the need.</p>
+
+<h2>JavaScript / TypeScript</h2>
+<pre>${esc(js)}</pre>
+<h2>Python</h2>
+<pre>${esc(py)}</pre>
+
+<h2>No-code agents and AI platforms</h2>
+<div class="card"><h3>Dify, Coze, n8n, custom GPTs</h3><p>Import <a href="/openapi.json">${esc(base)}/openapi.json</a> as a tool. Tell the agent: “When you can't do what the user asks, call search_tools; if matched is false, call log_unmet_need with a generic description of the need.”</p></div>
+<div class="card"><h3>MCP clients and agents</h3><p>Add the server next to your own: <code>${esc(base)}/mcp</code>. Its instructions already tell the model when to search and when to log.</p></div>
+<div class="card"><h3>Function calling</h3><p>Ready-made definitions: <code>${esc(base)}/functions.json?format=openai|anthropic|gemini</code></p></div>
+
+<h2>Privacy rules</h2>
+<p>Send only the need itself, rewritten as a generic description: no user ids, names, emails, company names or links. The server strips contact details again and stores only the text, an optional category and the date. Never send conversation transcripts.</p>
+
+<h2>Read the demand</h2>
+<p>Needs asked for 3 or more times are public at <a href="/wanted">/wanted</a> and as JSON at <a href="/api/wanted">/api/wanted</a>. Building something from it? <a href="/submit">List it</a> and the people searching next will find you.</p>`,
+    { canonical: base + "/developers" },
+  );
+}

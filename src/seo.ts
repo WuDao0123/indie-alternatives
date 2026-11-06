@@ -345,7 +345,7 @@ export const isThin = (data: SeoData, p: Product) => !(data.replaces.get(p.id)?.
 const indexable = (_data: SeoData, p: Product) => !THIN.has(p.id);
 
 export function siteUrls(data: SeoData): string[] {
-  return ["/", "/wanted", "/alternatives", "/submit", ...data.targets.map((t) => `/alternatives/${t.slug}`), ...data.categories.map((c) => `/category/${c.slug}`), ...data.index.all().filter((p) => indexable(data, p)).map((p) => `/product/${p.id}`)];
+  return ["/", "/wanted", "/developers", "/alternatives", "/submit", ...data.targets.map((t) => `/alternatives/${t.slug}`), ...data.categories.map((c) => `/category/${c.slug}`), ...data.index.all().filter((p) => indexable(data, p)).map((p) => `/product/${p.id}`)];
 }
 
 export function sitemapXml(base: string, data: SeoData): string {

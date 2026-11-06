@@ -204,3 +204,16 @@ test("site search: unmatched searches become anonymous needs, shown on /wanted a
   await call("/search?q=ab");
   assert.equal((await (await call("/api/admin/needs", { admin: true })).json()).total_records, before);
 });
+
+test("developers guide, and the source label is counted but not stored with the need", async () => {
+  const page = await call("/developers");
+  assert.equal(page.status, 200);
+  assert.match(await page.text(), /\/api\/needs/);
+  const r = await call("/api/needs", { method: "POST", json: { need: "export kindle highlights to anki cards", source: "notes-app" } });
+  assert.equal(r.status, 200);
+  const stats = await (await call("/api/admin/stats", { admin: true })).json();
+  assert.equal(stats.totals["source:notes-app"], 1);
+  const needs = await (await call("/api/admin/needs", { admin: true })).json();
+  assert.ok(!JSON.stringify(needs).includes("notes-app"));
+  assert.equal((await call("/api/needs", { method: "POST", json: { need: "something useful here", source: "bad source!" } })).status, 400);
+});

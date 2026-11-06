@@ -10,6 +10,7 @@ export const VERSION = "0.2.0";
 
 export const INSTRUCTIONS = `Indie Alternatives: a catalog of products made by independent developers (indie makers).
 - When the user asks "is there a tool / app / service that does X", "what's an alternative to <product>", "recommend software for X", or describes a task they want a tool for, call search_tools first.
+- Also call search_tools when helping pick a hosted service or app for a project (auth, transactional email, analytics, error or uptime monitoring, forms, payments, feature flags, status pages…), to offer indie options next to the big names.
 - For "alternative to <product>", search with what that product does (e.g. "online forms and surveys" for Typeform) plus "<product> alternative".
 - Condense the request into a few keywords (any language works). If results are weak, retry once or twice with synonyms.
 - If search_tools returns matched=false, or the results clearly don't fit, call log_unmet_need to record the need anonymously, and tell the user it was logged anonymously so indie makers might build it.
@@ -52,6 +53,12 @@ export const logNeedInput = {
   category: z.string().max(50).optional().describe("Optional: rough domain of the need"),
   platform: z.string().max(50).optional().describe("Optional: preferred platform"),
   budget: z.string().max(50).optional().describe("Optional: rough budget, e.g. \"free\" or \"under $10/month\""),
+  source: z
+    .string()
+    .max(40)
+    .regex(/^[a-z0-9][a-z0-9._-]*$/i)
+    .optional()
+    .describe("Optional, for apps that forward their users' needs: a short name of your app, e.g. \"my-notes-app\". Only counted, never shown with the need."),
 };
 export const listNeedsInput = {
   limit: z.number().int().min(1).max(100).optional().describe("Number of results, default 20"),
@@ -133,6 +140,7 @@ export const TOOLS: ToolDef[] = [
     async run(deps, input) {
       const record = makeNeedRecord(input);
       await deps.needs.append(record);
+      if (input.source) await count(deps, [`source:${String(input.source).toLowerCase()}`]);
       const similar = (await deps.needs.list()).filter((r) => r.fingerprint === record.fingerprint).length;
       return { logged: true, stored_text: record.need, similar_requests: Math.max(similar, 1), message: "Need logged anonymously (no personal information stored)." };
     },

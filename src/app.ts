@@ -7,7 +7,7 @@
  *   /catalog.json        full catalog (local installs read this)
  *   /, /submit           human pages: home and the maker submission form
  *   /alternatives[/{x}], /category/{c}, /product/{id}, /sitemap.xml, /robots.txt   SEO landing pages (seo.ts)
- *   /search, /search/none, /wanted, /api/wanted   people's searches as demand signals, and the public board (demand.ts)
+ *   /search, /search/none, /wanted, /api/wanted, /developers   people's searches as demand signals, and the public board (demand.ts)
  *   /badge.svg           "Listed on Indie Alternatives" badge
  *   /api/submissions     maker submissions (JSON)
  *   /api/admin/*         review queue and stats (requires ADMIN_TOKEN)
@@ -20,7 +20,7 @@ import { NotFoundError, TOOLS, ValidationError, count, enabledTools, indexFor, i
 import { ROUTES, coerceArgs, functionDefs, llmsTxt, openApiSpec, type FunctionFormat } from "./rest.js";
 import { cleanSubmittedProduct, slugify, urlKey } from "./catalog.js";
 import { redact } from "./privacy.js";
-import { searchPage, wantedPage, type PublicNeed } from "./demand.js";
+import { developersPage, searchPage, wantedPage, type PublicNeed } from "./demand.js";
 import { fingerprint } from "./privacy.js";
 import { badgeSvg, homePage, submitPage, thanksPage } from "./pages.js";
 import { INDEXNOW_KEY, alternativePage, alternativesIndexPage, categoryPage, productPage, robotsTxt, seoData, sitemapXml } from "./seo.js";
@@ -365,6 +365,7 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
       if (path === "/api/wanted") return json({ min_count: publicNeedsMin, total_records: p.records, distinct_needs: p.distinct, needs: p.needs }, 200, { "cache-control": "public, max-age=600" });
       return text(wantedPage(base, p.needs, publicNeedsMin, { records: p.records, distinct: p.distinct }), "text/html", 200, { "cache-control": "public, max-age=600" });
     }
+    if (get && path === "/developers") return text(developersPage(base), "text/html", 200, { "cache-control": "public, max-age=3600" });
     if (get && path === "/submit") return text(submitPage(base), "text/html");
     if (req.method === "POST" && path === "/submit") return handleSubmitForm(req, base);
     if (get && path === "/badge.svg") return text(badgeSvg(), "image/svg+xml", 200, { "cache-control": "public, max-age=86400" });
