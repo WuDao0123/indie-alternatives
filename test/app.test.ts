@@ -165,3 +165,42 @@ test("data/thin-products.json is current (npm run og regenerates it)", async () 
   const got = JSON.parse(await readFile(new URL("../../data/thin-products.json", import.meta.url), "utf8"));
   assert.deepEqual(got, want);
 });
+
+test("site search: unmatched searches become anonymous needs, shown on /wanted at k>=2", async () => {
+  const q = "zxqv quantum knitting pattern planner";
+  const first = await call(`/search?q=${encodeURIComponent(q)}`);
+  assert.equal(first.status, 200);
+  const html = await first.text();
+  assert.match(html, /saved your search anonymously/);
+  assert.match(html, /noindex/);
+  const cookie = first.headers.get("set-cookie")!;
+  assert.match(cookie, /ia_logged=/);
+
+  // a reload from the same browser is not counted again
+  await call(`/search?q=${encodeURIComponent(q)}`, { headers: { cookie: cookie.split(";")[0] } });
+  let wanted = await (await call("/api/wanted")).json();
+  assert.ok(!wanted.needs.some((n: any) => n.need === q), "one person is not shown publicly");
+
+  // a second person
+  await call(`/search?q=${encodeURIComponent(q)}`);
+  wanted = await (await call("/api/wanted")).json();
+  assert.ok(wanted.needs.some((n: any) => n.need === q && n.count === 2));
+  assert.match(await (await call("/wanted")).text(), /quantum knitting/);
+
+  // contact details never reach the board
+  await call(`/search?q=${encodeURIComponent("invoice tool for plumbers mail me a@b.com")}`);
+  const admin = await (await call("/api/admin/needs", { admin: true })).json();
+  assert.ok(!JSON.stringify(admin).includes("a@b.com"));
+
+  // matched searches show products and offer "none of these fit"
+  const found = await (await call("/search?q=typeform+alternative")).text();
+  assert.match(found, /None of these fit/);
+  const none = await call("/search/none", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "q=typeform+alternative+with+offline+mode" });
+  assert.match(await none.text(), /Thanks, noted/);
+
+  // junk is not logged
+  const before = (await (await call("/api/admin/needs", { admin: true })).json()).total_records;
+  await call("/search?q=" + encodeURIComponent("https://spam.example"));
+  await call("/search?q=ab");
+  assert.equal((await (await call("/api/admin/needs", { admin: true })).json()).total_records, before);
+});

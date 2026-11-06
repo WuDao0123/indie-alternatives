@@ -25,7 +25,7 @@ export interface Deps {
 }
 
 /** How a tool call arrived; only used for anonymous counters */
-export type Channel = "mcp" | "rest" | "cli";
+export type Channel = "mcp" | "rest" | "cli" | "web";
 
 /** Record counters without ever failing the request */
 export async function count(deps: Deps, keys: string[]): Promise<void> {

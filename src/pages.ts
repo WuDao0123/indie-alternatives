@@ -32,6 +32,9 @@ textarea{min-height:90px}
 .checks{display:flex;flex-wrap:wrap;gap:6px 16px}.checks label{font-weight:400;margin:0;display:flex;gap:6px;align-items:center}
 .hp{position:absolute;left:-9999px}
 .error{color:var(--err);font-weight:600}
+.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;margin-bottom:40px}.top .brand{margin:0}
+.search{display:flex;gap:6px;flex:1 1 260px;max-width:420px}.search input{flex:1;min-width:0;padding:8px 11px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--fg);font:inherit}
+.search button{padding:8px 14px;border:0;border-radius:7px;background:var(--accent);color:var(--accent-fg);font:inherit;font-weight:600;cursor:pointer}
 footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
 `;
 
@@ -44,7 +47,7 @@ export interface PageMeta {
   noindex?: boolean;
 }
 
-export function layout(title: string, description: string, body: string, meta: PageMeta = {}): string {
+export function layout(title: string, description: string, body: string, meta: PageMeta = {}, q = ""): string {
   // "<" escaped so catalog text can never close the script tag
   // every page gets a share image; landing pages pass their own (tools/og.mjs renders them)
   const image = meta.image ?? (meta.canonical ? new URL("/og/default.png", meta.canonical).href : undefined);
@@ -59,9 +62,10 @@ ${image ? `<meta property="og:image" content="${esc(image)}"><meta property="og:
 ${meta.noindex ? `<meta name="robots" content="noindex,follow">` : ""}
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 <style>${CSS}</style>${ld}</head>
-<body><main><a class="brand" href="/">Indie <span>Alternatives</span></a>
+<body><main><div class="top"><a class="brand" href="/">Indie <span>Alternatives</span></a>
+<form class="search" method="get" action="/search" role="search"><input type="search" name="q" value="${esc(q)}" placeholder="What do you need a tool for?" aria-label="Search tools" maxlength="200"><button type="submit">Search</button></form></div>
 ${body}
-<footer>Indie Alternatives · <a href="/alternatives">Browse alternatives</a> · <a href="/submit">List your product</a> · <a href="/llms.txt">llms.txt</a> · <a href="/openapi.json">OpenAPI</a></footer>
+<footer>Indie Alternatives · <a href="/wanted">Wanted: what people look for</a> · <a href="/alternatives">Browse alternatives</a> · <a href="/submit">List your product</a> · <a href="/llms.txt">llms.txt</a> · <a href="/openapi.json">OpenAPI</a></footer>
 </main></body></html>`;
 }
 
@@ -100,12 +104,13 @@ ${
 <p>Import <a href="/openapi.json">${esc(base)}/openapi.json</a>, or get function-calling definitions from <code>${esc(base)}/functions.json?format=openai|anthropic|gemini</code>.</p></div>
 
 <h2>For makers</h2>
+<p><strong>Looking for something to build?</strong> <a href="/wanted">See what people searched for and couldn't find</a>, from searches on this site and in AI assistants.</p>
 <p>${opts.products} products listed so far. Listing is free: when someone asks their AI for a tool like yours, it can recommend you.</p>
 ${opts.submissions ? `<p><a class="btn" href="/submit">List your product</a></p>` : ""}
 ${needs}
 
 <h2>Privacy</h2>
-<p class="muted">When no tool fits, the AI may log the need so makers can see demand. We store only the need text (with contact details stripped), an optional category and the date. No accounts, no IP addresses, no conversation content.</p>`,
+<p class="muted">When a search on this site finds nothing, or no tool fits in an AI assistant, the need is logged so makers can see demand. We store only the need text (with contact details stripped), an optional category and the date. No accounts, no IP addresses, no conversation content.</p>`,
     { canonical: base + "/" },
   );
 }

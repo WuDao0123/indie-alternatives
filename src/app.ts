@@ -7,6 +7,7 @@
  *   /catalog.json        full catalog (local installs read this)
  *   /, /submit           human pages: home and the maker submission form
  *   /alternatives[/{x}], /category/{c}, /product/{id}, /sitemap.xml, /robots.txt   SEO landing pages (seo.ts)
+ *   /search, /search/none, /wanted, /api/wanted   people's searches as demand signals, and the public board (demand.ts)
  *   /badge.svg           "Listed on Indie Alternatives" badge
  *   /api/submissions     maker submissions (JSON)
  *   /api/admin/*         review queue and stats (requires ADMIN_TOKEN)
@@ -19,6 +20,8 @@ import { NotFoundError, TOOLS, ValidationError, count, enabledTools, indexFor, i
 import { ROUTES, coerceArgs, functionDefs, llmsTxt, openApiSpec, type FunctionFormat } from "./rest.js";
 import { cleanSubmittedProduct, slugify, urlKey } from "./catalog.js";
 import { redact } from "./privacy.js";
+import { searchPage, wantedPage, type PublicNeed } from "./demand.js";
+import { fingerprint } from "./privacy.js";
 import { badgeSvg, homePage, submitPage, thanksPage } from "./pages.js";
 import { INDEXNOW_KEY, alternativePage, alternativesIndexPage, categoryPage, productPage, robotsTxt, seoData, sitemapXml } from "./seo.js";
 import type { Product, ProductStore, Submission, SubmissionStatus, SubmissionStore } from "./types.js";
@@ -116,10 +119,50 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     return `${proto}://${req.headers.get("x-forwarded-host") ?? u.host}`;
   };
 
-  async function publicNeeds() {
+  /** needs asked at least publicNeedsMin times: safe to show publicly */
+  async function publicNeeds(limit = 10) {
     const t = TOOLS.find((x) => x.name === "list_unmet_needs")!;
-    const r = (await t.run(deps, { limit: 100 })) as { needs: { need: string; count: number }[] };
-    return r.needs.filter((n) => n.count >= publicNeedsMin).slice(0, 10);
+    const r = (await t.run(deps, { limit: 1000 })) as { total_records: number; distinct_needs: number; needs: PublicNeed[] };
+    return { needs: r.needs.filter((n) => n.count >= publicNeedsMin).slice(0, limit), records: r.total_records, distinct: r.distinct_needs };
+  }
+
+  // ---------- people searching on the site ----------
+
+  /** a search worth logging: has letters, not a URL, sane length */
+  const loggable = (q: string) => q.length >= 3 && q.length <= 200 && /\p{L}{2}/u.test(q) && !/https?:\/\/|www\./i.test(q);
+  const LOGGED = "ia_logged";
+  /** don't count a reload of the same search twice: the cookie holds only short hashes of what this browser already logged */
+  const loggedBefore = (req: Request) => new Set((req.headers.get("cookie") ?? "").match(new RegExp(`${LOGGED}=([\\w.]*)`))?.[1].split(".").filter(Boolean) ?? []);
+  function rememberLogged(seen: Set<string>, fp: string) {
+    const list = [...seen, fp].slice(-20).join(".");
+    return { "set-cookie": `${LOGGED}=${list}; Path=/search; Max-Age=86400; SameSite=Lax; Secure; HttpOnly` };
+  }
+
+  async function logWebNeed(req: Request, q: string, key: string): Promise<{ logged: boolean; headers: Record<string, string> }> {
+    if (!loggable(q)) return { logged: false, headers: {} };
+    const fp = fingerprint(q).slice(0, 8);
+    const seen = loggedBefore(req);
+    if (seen.has(fp)) return { logged: true, headers: {} };
+    await runTool(deps, "log_unmet_need", { need: q }, "web");
+    await count(deps, [key]);
+    return { logged: true, headers: rememberLogged(seen, fp) };
+  }
+
+  async function handleSearch(req: Request, url: URL, base: string): Promise<Response> {
+    const html = (body: string, status = 200, h: Record<string, string> = {}) => text(body, "text/html", status, { "cache-control": "no-store", ...h });
+    if (req.method === "POST") {
+      const q = (new URLSearchParams(await readBody(req)).get("q") ?? "").trim().slice(0, 200);
+      const r = await logWebNeed(req, q, "web:none-fit");
+      return html(searchPage(base, q, { matched: false, hits: [], logged: r.logged, reported: true }), 200, r.headers);
+    }
+    const q = (url.searchParams.get("q") ?? "").trim().slice(0, 200);
+    if (!q) return html(searchPage(base, "", { matched: false, hits: [], logged: false }));
+    const r = (await runTool(deps, "search_tools", { query: q, limit: 8 }, "web")) as { matched: boolean; results: { id: string }[] };
+    const index = await indexFor(deps.catalog);
+    const hits = r.results.map((x) => index.get(x.id)).filter((p): p is Product => Boolean(p));
+    const shown = r.matched ? hits : hits.slice(0, 3); // weak matches: a few, but still offer "none fit"
+    const logged = r.matched ? { logged: false, headers: {} } : await logWebNeed(req, q, "web:unmatched");
+    return html(searchPage(base, q, { matched: r.matched, hits: shown, logged: logged.logged }), 200, logged.headers);
   }
 
   async function handleMcp(req: Request): Promise<Response> {
@@ -310,11 +353,17 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
       if (!(req.headers.get("accept") ?? "").includes("text/html")) return text(llmsTxt(deps, base), "text/plain");
       const index = await indexFor(deps.catalog);
       const popular = seoData(index).targets.slice(0, 8);
-      return text(homePage(base, { products: index.size, needs: await publicNeeds(), submissions: Boolean(deps.submissions), popular }), "text/html");
+      return text(homePage(base, { products: index.size, needs: (await publicNeeds()).needs, submissions: Boolean(deps.submissions), popular }), "text/html");
     }
     if (get) {
       const seo = await handleSeo(path, base);
       if (seo) return seo;
+    }
+    if (path === "/search" || (req.method === "POST" && path === "/search/none")) return handleSearch(req, url, base);
+    if (get && (path === "/wanted" || path === "/api/wanted")) {
+      const p = await publicNeeds(200);
+      if (path === "/api/wanted") return json({ min_count: publicNeedsMin, total_records: p.records, distinct_needs: p.distinct, needs: p.needs }, 200, { "cache-control": "public, max-age=600" });
+      return text(wantedPage(base, p.needs, publicNeedsMin, { records: p.records, distinct: p.distinct }), "text/html", 200, { "cache-control": "public, max-age=600" });
     }
     if (get && path === "/submit") return text(submitPage(base), "text/html");
     if (req.method === "POST" && path === "/submit") return handleSubmitForm(req, base);
