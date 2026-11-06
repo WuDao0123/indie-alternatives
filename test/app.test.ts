@@ -252,3 +252,10 @@ test("wanted board: similar wordings group, partial needs apart, category filter
   await call("/search?q=" + encodeURIComponent("zzkq orbital beekeeping ledger") + "&from=wanted");
   assert.equal((await (await call("/api/admin/needs", { admin: true })).json()).total_records, before);
 });
+
+test("product cards show an icon or a letter", async () => {
+  const logos: string[] = JSON.parse(await readFile(new URL("../../data/logos.json", import.meta.url), "utf8"));
+  const html = await (await call("/alternatives/notion")).text();
+  if (logos.includes("affine")) assert.match(html, /<img class="logo" src="\/logo\/affine.png"/);
+  assert.ok(/class="logo/.test(html));
+});

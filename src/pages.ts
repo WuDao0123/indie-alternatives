@@ -21,6 +21,12 @@ code,pre{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:va
 code{padding:2px 5px}
 pre{padding:12px 14px;overflow-x:auto;margin:6px 0 0;white-space:pre}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:12px 0}
+.card.product{display:flex;gap:14px;align-items:flex-start}.card.product .body{min-width:0;flex:1}.card.product .body>:first-child{margin-top:0}.card.product .body>:last-child{margin-bottom:0}
+.logo{flex:none;border-radius:10px;background:#fff;border:1px solid var(--line);object-fit:contain}
+.logo.letter{display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:hsl(var(--h) 45% 30%);background:hsl(var(--h) 60% 92%);border-color:transparent}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo.letter{color:hsl(var(--h) 60% 82%);background:hsl(var(--h) 30% 22%)}}
+:root[data-theme="dark"] .logo.letter{color:hsl(var(--h) 60% 82%);background:hsl(var(--h) 30% 22%)}
+.phead{display:flex;gap:18px;align-items:center;margin-bottom:8px}.phead h1{margin:0 0 4px}.phead .lead{margin:0}.phead .logo{border-radius:14px}
 .card>:first-child{margin-top:0}.card>:last-child{margin-bottom:0}.card h3{margin-bottom:4px}.card p{margin:6px 0}
 .btn{display:inline-block;background:var(--accent);color:var(--accent-fg);padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;border:0;font-size:16px;cursor:pointer}
 .muted{color:var(--muted)}

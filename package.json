@@ -21,6 +21,7 @@
     "prepublishOnly": "npm test",
     "dev:worker": "wrangler dev",
     "og": "tsc && node tools/og.mjs",
+    "logos": "node tools/logos.mjs",
     "deploy": "npm run og && wrangler d1 migrations apply DB --remote && wrangler deploy",
     "db:migrate": "wrangler d1 migrations apply DB --remote",
     "db:migrate:local": "wrangler d1 migrations apply DB --local"

@@ -6,6 +6,7 @@
  *   GET  /wanted             public board of needs asked for ≥ publicNeedsMin times (k-anonymity)
  */
 import { esc, layout } from "./pages.js";
+import { productCard } from "./seo.js";
 import type { Product } from "./types.js";
 
 export interface PublicNeed {
@@ -17,13 +18,7 @@ export interface PublicNeed {
   kind: "missing" | "partial";
 }
 
-const PRICING: Record<string, string> = { free: "Free", freemium: "Free plan", paid: "Paid", commission: "Commission", "open-source": "Open source" };
-
-function hit(p: Product): string {
-  const meta = [p.pricing && (PRICING[p.pricing] ?? p.pricing), (p.platforms ?? []).join(", ")].filter(Boolean).map(esc).join(" · ");
-  return `<div class="card"><h3><a href="/product/${esc(p.id)}">${esc(p.name)}</a></h3><p>${esc(p.tagline)}</p>
-<p class="count">${meta ? `${meta} · ` : ""}<a href="${esc(p.url)}" rel="noopener">Website ↗</a></p></div>`;
-}
+const hit = (p: Product) => productCard(p);
 
 const PRIVACY = `<p class="count">Searches that find nothing are saved anonymously (only the text, contact details stripped, and the date) so independent developers can see what people need. <a href="/wanted">See what people are looking for</a>.</p>`;
 

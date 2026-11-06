@@ -5,3 +5,4 @@ dist
 .wrangler
 .dev.vars
 public/og
+public/logo

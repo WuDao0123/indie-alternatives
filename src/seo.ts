@@ -18,6 +18,18 @@ import type { Product } from "./types.js";
 import thinIds from "../data/thin-products.json" with { type: "json" };
 
 const THIN = new Set<string>(thinIds);
+// products with an icon in public/logo/ (tools/logos.mjs)
+import logoIds from "../data/logos.json" with { type: "json" };
+const LOGOS = new Set<string>(logoIds);
+
+/** product icon, or its first letter on a tinted square when there's none */
+export function logo(p: Product, size = 40): string {
+  if (LOGOS.has(p.id)) return `<img class="logo" src="/logo/${esc(p.id)}.png" width="${size}" height="${size}" alt="" loading="lazy" decoding="async">`;
+  let h = 0;
+  for (const c of p.id) h = (h * 31 + c.charCodeAt(0)) % 360;
+  const ch = [...p.name.trim()][0]?.toUpperCase() ?? "?";
+  return `<span class="logo letter" style="--h:${h};width:${size}px;height:${size}px;font-size:${Math.round(size * 0.45)}px" aria-hidden="true">${esc(ch)}</span>`;
+}
 
 /** IndexNow key (public by design: search engines fetch /{key}.txt to confirm we own the site) */
 export const INDEXNOW_KEY = "db4f06c6a7cea6e7090ee71c3419f713";
@@ -182,11 +194,11 @@ function related(data: SeoData, t: Target, max = 8): Target[] {
 const year = () => new Date().getUTCFullYear();
 const PRICING: Record<string, string> = { free: "Free", freemium: "Free plan", paid: "Paid", commission: "Commission", "open-source": "Open source" };
 
-function productCard(p: Product, n?: number): string {
+export function productCard(p: Product, n?: number): string {
   const meta = [p.pricing && (PRICING[p.pricing] ?? p.pricing), (p.platforms ?? []).join(", ")].filter(Boolean).map(esc).join(" · ");
-  return `<div class="card" id="${esc(p.id)}"><h3>${n ? `${n}. ` : ""}<a href="/product/${esc(p.id)}">${esc(p.name)}</a></h3>
+  return `<div class="card product" id="${esc(p.id)}">${logo(p)}<div class="body"><h3>${n ? `${n}. ` : ""}<a href="/product/${esc(p.id)}">${esc(p.name)}</a></h3>
 <p><strong>${esc(p.tagline)}</strong></p>${p.description && p.description !== p.tagline ? `<p>${esc(p.description)}</p>` : ""}
-<p class="count">${meta ? `${meta} · ` : ""}<a href="${esc(p.url)}" rel="noopener">Website ↗</a></p></div>`;
+<p class="count">${meta ? `${meta} · ` : ""}<a href="${esc(p.url)}" rel="noopener">Website ↗</a></p></div></div>`;
 }
 
 function itemListLd(base: string, path: string, name: string, ps: Product[]) {
@@ -322,8 +334,8 @@ export function productPage(base: string, data: SeoData, p: Product): string {
     `${p.name}: ${p.tagline} · Indie Alternatives`,
     desc,
     `<p class="count"><a href="/alternatives">All</a>${p.categories[0] ? ` › <a href="/category/${slugify(p.categories[0])}">${esc(p.categories[0])}</a>` : ""} › ${esc(p.name)}</p>
-<h1>${esc(p.name)}</h1>
-<p class="lead">${esc(p.tagline)}</p>
+<div class="phead">${logo(p, 64)}<div><h1>${esc(p.name)}</h1>
+<p class="lead">${esc(p.tagline)}</p></div></div>
 ${p.description && p.description !== p.tagline ? `<p>${esc(p.description)}</p>` : ""}
 <p><a class="btn" href="${esc(p.url)}" rel="noopener">Visit ${esc(p.name)} ↗</a></p>
 <div class="card">
