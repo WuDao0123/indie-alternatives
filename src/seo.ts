@@ -11,6 +11,7 @@
  */
 import { slugify } from "./catalog.js";
 import { esc, layout, type PageMeta } from "./pages.js";
+import { alternatesFor, localizedUrls } from "./localized.js";
 import type { ProductIndex } from "./search.js";
 import type { Product } from "./types.js";
 // product pages with nothing to link to, precomputed by tools/og.mjs: computing it for the whole catalog per request
@@ -178,7 +179,7 @@ function topCategories(ps: Product[]): string[] {
 }
 
 /** other targets sharing a top category, most similar first */
-function related(data: SeoData, t: Target, max = 8): Target[] {
+export function related(data: SeoData, t: Target, max = 8): Target[] {
   const mine = new Set(t.categories);
   return data.targets
     .filter((o) => o !== t)
@@ -191,9 +192,9 @@ function related(data: SeoData, t: Target, max = 8): Target[] {
 
 // ---------- facts derived from the catalog (no claims beyond the data) ----------
 
-const isOpenSource = (p: Product) => p.pricing === "open-source" || p.tags.some((t) => /open.?source|开源/i.test(t));
-const isSelfHosted = (p: Product) => (p.platforms ?? []).includes("self-hosted") || p.tags.some((t) => /self.?host/i.test(t));
-const hasFreePlan = (p: Product) => ["free", "freemium", "open-source"].includes(p.pricing ?? "");
+export const isOpenSource = (p: Product) => p.pricing === "open-source" || p.tags.some((t) => /open.?source|开源/i.test(t));
+export const isSelfHosted = (p: Product) => (p.platforms ?? []).includes("self-hosted") || p.tags.some((t) => /self.?host/i.test(t));
+export const hasFreePlan = (p: Product) => ["free", "freemium", "open-source"].includes(p.pricing ?? "");
 const PLATFORM_LABEL: Record<string, string> = {
   web: "Web", macos: "Mac", windows: "Windows", linux: "Linux", ios: "iOS", android: "Android", "self-hosted": "Self-hosted", api: "API", "browser-extension": "Browser extension",
 };
@@ -214,7 +215,7 @@ function faqHtml(faqs: Faq[]): string {
   if (!faqs.length) return "";
   return `<h2>Questions</h2>\n${faqs.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n")}`;
 }
-const faqLd = (faqs: Faq[]) =>
+export const faqLd = (faqs: Faq[]) =>
   faqs.length ? [{ "@type": "FAQPage", mainEntity: faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) }] : [];
 
 function compareTable(ps: Product[], highlight?: string): string {
@@ -266,7 +267,7 @@ export function productCard(p: Product, n?: number): string {
 <p class="count">${meta ? `${meta} · ` : ""}<a href="${esc(p.url)}" rel="noopener">Website ↗</a></p></div></div>`;
 }
 
-function itemListLd(base: string, path: string, name: string, ps: Product[], extra: unknown[] = []) {
+export function itemListLd(base: string, path: string, name: string, ps: Product[], extra: unknown[] = []) {
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -302,7 +303,12 @@ export function alternativePage(base: string, data: SeoData, t: Target): string 
   const desc = `${n} independent alternatives to ${t.name}, including ${names}.${free ? ` ${free} with a free plan.` : ""} Built by indie makers, not big companies.`;
   const rel = related(data, t);
   const faqs = targetFaqs(t);
-  const meta: PageMeta = { canonical: base + path, jsonLd: itemListLd(base, path, `Alternatives to ${t.name}`, t.products, faqLd(faqs)), image: `${base}/og/alt/${t.slug}.png` };
+  const meta: PageMeta = {
+    canonical: base + path,
+    jsonLd: itemListLd(base, path, `Alternatives to ${t.name}`, t.products, faqLd(faqs)),
+    image: `${base}/og/alt/${t.slug}.png`,
+    alternates: alternatesFor(base, path),
+  };
   return layout(
     title,
     desc,
@@ -336,7 +342,7 @@ export function categoryPage(base: string, data: SeoData, c: Category): string {
 ${alts.length ? `<p>Looking to replace something? ${alts.map((t) => `<a href="/alternatives/${t.slug}">${esc(t.name)}</a>`).join(" · ")}</p>` : ""}
 ${c.products.map((p) => productCard(p)).join("\n")}
 ${askYourAi(`an indie ${c.name.toLowerCase()} tool that's free for small teams`)}`,
-    { canonical: base + path, jsonLd: itemListLd(base, path, `Indie ${c.name} tools`, c.products), image: `${base}/og/cat/${c.slug}.png` },
+    { canonical: base + path, jsonLd: itemListLd(base, path, `Indie ${c.name} tools`, c.products), image: `${base}/og/cat/${c.slug}.png`, alternates: alternatesFor(base, path) },
   );
 }
 
@@ -350,7 +356,7 @@ export function alternativesIndexPage(base: string, data: SeoData): string {
 <p>${data.targets.map((t) => `<a href="/alternatives/${t.slug}">${esc(t.name)}</a>&nbsp;<span class="count">${t.products.length}</span>`).join(" · ")}</p>
 <h2>By category</h2>
 <p>${data.categories.map((c) => `<a href="/category/${c.slug}">${esc(c.name)}</a>&nbsp;<span class="count">${c.products.length}</span>`).join(" · ")}</p>`,
-    { canonical: base + "/alternatives" },
+    { canonical: base + "/alternatives", alternates: alternatesFor(base, "/alternatives") },
   );
 }
 
@@ -432,7 +438,7 @@ export const isThin = (data: SeoData, p: Product) => !(data.replaces.get(p.id)?.
 const indexable = (_data: SeoData, p: Product) => !THIN.has(p.id);
 
 export function siteUrls(data: SeoData): string[] {
-  return ["/", "/wanted", "/developers", "/alternatives", "/submit", ...data.targets.map((t) => `/alternatives/${t.slug}`), ...data.categories.map((c) => `/category/${c.slug}`), ...data.index.all().filter((p) => indexable(data, p)).map((p) => `/product/${p.id}`)];
+  return ["/", "/wanted", "/developers", "/alternatives", "/submit", ...data.targets.map((t) => `/alternatives/${t.slug}`), ...data.categories.map((c) => `/category/${c.slug}`), ...data.index.all().filter((p) => indexable(data, p)).map((p) => `/product/${p.id}`), ...localizedUrls(data)];
 }
 
 export function sitemapXml(base: string, data: SeoData): string {

@@ -58,6 +58,7 @@ table.compare th,table.compare td{text-align:left;padding:8px 10px;border-bottom
 table.compare th{color:var(--muted);font-weight:600;white-space:nowrap}table.compare tr:last-child td{border-bottom:0}
 table.compare tr.me td{background:var(--code);font-weight:600}table.compare a{color:var(--fg)}
 .yes{color:var(--ok);font-weight:600}.nw{white-space:nowrap}.scroll{overflow-x:auto}
+.langs{margin:8px 0 0}
 footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
 `;
 
@@ -66,31 +67,68 @@ export interface PageMeta {
   jsonLd?: unknown;
   /** og:image URL */
   image?: string;
+  /** page language (default en) */
+  lang?: string;
+  /** the same page in other languages: hreflang → absolute URL (include the page itself); shown as a language switcher */
+  alternates?: { lang: string; href: string }[];
+  /** localized chrome: search placeholder/button and footer links */
+  chrome?: Chrome;
   /** the page has its own big search box */
   hideSearch?: boolean;
   /** keep thin pages out of search indexes */
   noindex?: boolean;
 }
 
+export interface Chrome {
+  home: string;
+  placeholder: string;
+  button: string;
+  footer: { href: string; label: string }[];
+}
+
+const EN_CHROME: Chrome = {
+  home: "/",
+  placeholder: "What do you need a tool for?",
+  button: "Search",
+  footer: [
+    { href: "/wanted", label: "Wanted: what people look for" },
+    { href: "/alternatives", label: "Browse alternatives" },
+    { href: "/developers", label: "For developers" },
+    { href: "/submit", label: "List your product" },
+    { href: "/llms.txt", label: "llms.txt" },
+    { href: "/openapi.json", label: "OpenAPI" },
+  ],
+};
+
+export const LANG_NAMES: Record<string, string> = { en: "English", es: "Español", de: "Deutsch", fr: "Français", pt: "Português", ja: "日本語" };
+
 export function layout(title: string, description: string, body: string, meta: PageMeta = {}, q = ""): string {
   // "<" escaped so catalog text can never close the script tag
   // every page gets a share image; landing pages pass their own (tools/og.mjs renders them)
+  const chrome = meta.chrome ?? EN_CHROME;
   const image = meta.image ?? (meta.canonical ? new URL("/og/default.png", meta.canonical).href : undefined);
   const ld = meta.jsonLd ? `<script type="application/ld+json">${JSON.stringify(meta.jsonLd).replace(/</g, "\\u003c")}</script>` : "";
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="${esc(meta.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><meta name="description" content="${esc(description)}">
 ${meta.canonical ? `<link rel="canonical" href="${esc(meta.canonical)}"><meta property="og:url" content="${esc(meta.canonical)}">` : ""}
 <meta property="og:type" content="website"><meta property="og:site_name" content="Indie Alternatives">
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}">
 ${image ? `<meta property="og:image" content="${esc(image)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${esc(image)}">` : `<meta name="twitter:card" content="summary">`}
 ${meta.noindex ? `<meta name="robots" content="noindex,follow">` : ""}
+${(meta.alternates ?? []).map((a) => `<link rel="alternate" hreflang="${esc(a.lang)}" href="${esc(a.href)}">`).join("")}${
+    meta.alternates?.length ? `<link rel="alternate" hreflang="x-default" href="${esc(meta.alternates.find((a) => a.lang === "en")?.href ?? meta.alternates[0].href)}">` : ""
+  }
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 <style>${CSS}</style>${ld}</head>
-<body><main><div class="top"><a class="brand" href="/">Indie <span>Alternatives</span></a>
-${meta.hideSearch ? "" : `<form class="search" method="get" action="/search" role="search"><input type="search" name="q" value="${esc(q)}" placeholder="What do you need a tool for?" aria-label="Search tools" maxlength="200"><button type="submit">Search</button></form>`}</div>
+<body><main><div class="top"><a class="brand" href="${esc(chrome.home)}">Indie <span>Alternatives</span></a>
+${meta.hideSearch ? "" : `<form class="search" method="get" action="/search" role="search"><input type="search" name="q" value="${esc(q)}" placeholder="${esc(chrome.placeholder)}" aria-label="${esc(chrome.placeholder)}" maxlength="200"><button type="submit">${esc(chrome.button)}</button></form>`}</div>
 ${body}
-<footer>Indie Alternatives · <a href="/wanted">Wanted: what people look for</a> · <a href="/alternatives">Browse alternatives</a> · <a href="/developers">For developers</a> · <a href="/submit">List your product</a> · <a href="/llms.txt">llms.txt</a> · <a href="/openapi.json">OpenAPI</a></footer>
+<footer>Indie Alternatives · ${chrome.footer.map((f) => `<a href="${esc(f.href)}">${esc(f.label)}</a>`).join(" · ")}${
+    meta.alternates && meta.alternates.length > 1
+      ? `<p class="langs">${meta.alternates.map((a) => (a.lang === (meta.lang ?? "en") ? `<strong>${esc(LANG_NAMES[a.lang] ?? a.lang)}</strong>` : `<a href="${esc(a.href)}" hreflang="${esc(a.lang)}" lang="${esc(a.lang)}">${esc(LANG_NAMES[a.lang] ?? a.lang)}</a>`)).join(" · ")}</p>`
+      : ""
+  }</footer>
 </main></body></html>`;
 }
 
@@ -105,6 +143,7 @@ export function homePage(
     popular?: { slug: string; name: string }[];
     pages?: number;
     logged?: number;
+    alternates?: { lang: string; href: string }[];
   },
 ): string {
   const mcp = `${base}/mcp`;
@@ -145,7 +184,7 @@ ${client("Custom GPTs, Dify, n8n, your own agent", `<p>Import <a href="/openapi.
 
 <h2>Privacy</h2>
 <p class="muted">When a search on this site finds nothing, or no tool fits in an AI assistant, the need is logged so makers can see demand. We store only the need text (with contact details stripped), an optional category and the date. No accounts, no IP addresses, no conversation content.</p>`,
-    { canonical: base + "/", hideSearch: true },
+    { canonical: base + "/", hideSearch: true, alternates: opts.alternates },
   );
 }
 

@@ -23,6 +23,7 @@ import { redact } from "./privacy.js";
 import { developersPage, searchPage, wantedPage, type PublicNeed } from "./demand.js";
 import { fingerprint } from "./privacy.js";
 import { adminPage } from "./admin.js";
+import { alternatesFor, isLang, localizedAlternative, localizedCategory, localizedHome, localizedIndex } from "./localized.js";
 import { badgeSvg, homePage, submitPage, thanksPage } from "./pages.js";
 import { INDEXNOW_KEY, alternativePage, alternativesIndexPage, categoryPage, productPage, robotsTxt, seoData, sitemapXml } from "./seo.js";
 import type { Product, ProductStore, Submission, SubmissionStatus, SubmissionStore } from "./types.js";
@@ -332,7 +333,36 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
 
   // ---------- SEO landing pages ----------
 
+  /** /{lang}/…: the localized home, index, alternatives and category pages */
+  async function handleLocalized(path: string, base: string): Promise<Response | undefined> {
+    const m = path.match(/^\/([a-z]{2})(\/.*)?$/);
+    if (!m || !isLang(m[1])) return undefined;
+    const l = m[1];
+    const rest = m[2] ?? "/";
+    if (rest === "/" && !path.endsWith("/")) return new Response(null, { status: 301, headers: { location: `/${l}/` } });
+    const index = await indexFor(deps.catalog);
+    const data = seoData(index);
+    const html = (s: string) => text(s, "text/html", 200, PAGE_CACHE);
+    if (rest === "/") return html(localizedHome(base, l, data, index.size));
+    if (/^\/alternatives\/?$/.test(rest)) return html(localizedIndex(base, l, data));
+    const alt = rest.match(/^\/alternatives\/([a-z0-9-]+)\/?$/);
+    const t = alt && data.targetBySlug.get(alt[1]);
+    if (t) {
+      await count(deps, ["page:alternatives", `lang:${l}`]);
+      return html(localizedAlternative(base, l, data, t));
+    }
+    const cat = rest.match(/^\/category\/([a-z0-9-]+)\/?$/);
+    const c = cat && data.categoryBySlug.get(cat[1]);
+    if (c) {
+      await count(deps, ["page:category", `lang:${l}`]);
+      return html(localizedCategory(base, l, data, c));
+    }
+    return undefined;
+  }
+
   async function handleSeo(path: string, base: string): Promise<Response | undefined> {
+    const loc = await handleLocalized(path, base);
+    if (loc) return loc;
     if (path === "/robots.txt") return text(robotsTxt(base), "text/plain", 200, PAGE_CACHE);
     // share images are static assets on Workers; one not rendered yet (e.g. a page from a newly approved product) gets the default
     if (/^\/og\/(alt|cat)\/[a-z0-9-]+\.png$/.test(path)) return new Response(null, { status: 302, headers: { location: "/og/default.png" } });
@@ -379,7 +409,10 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
       const index = await indexFor(deps.catalog);
       const seo = seoData(index);
       const popular = seo.targets.slice(0, 10);
-      return text(homePage(base, { products: index.size, needs: (await publicNeeds()).needs, submissions: Boolean(deps.submissions), popular, pages: seo.targets.length }), "text/html");
+      return text(
+        homePage(base, { products: index.size, needs: (await publicNeeds()).needs, submissions: Boolean(deps.submissions), popular, pages: seo.targets.length, alternates: alternatesFor(base, "/") }),
+        "text/html",
+      );
     }
     if (get) {
       const seo = await handleSeo(path, base);

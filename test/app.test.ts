@@ -278,3 +278,33 @@ test("landing pages carry a comparison table and data-backed FAQ", async () => {
   assert.match(prod, /Is Docmost open source\?/);
   assert.match(prod, /Docmost compared with similar tools/);
 });
+
+test("localized landing pages with hreflang", async () => {
+  const es = await call("/es/alternatives/notion");
+  assert.equal(es.status, 200);
+  const html = await es.text();
+  assert.match(html, /<html lang="es">/);
+  assert.match(html, /Alternativas indie a Notion/);
+  assert.match(html, /hreflang="ja" href="https:\/\/example.test\/ja\/alternatives\/notion"/);
+  assert.match(html, /hreflang="x-default" href="https:\/\/example.test\/alternatives\/notion"/);
+  for (const l of ["de", "fr", "pt", "ja"]) assert.equal((await call(`/${l}/alternatives/notion`)).status, 200);
+  assert.equal((await call("/ja/")).status, 200);
+  assert.equal((await call("/de")).status, 301);
+  assert.equal((await call("/fr/category/developer-tools")).status, 200);
+  assert.equal((await call("/xx/alternatives/notion")).status, 404);
+  const en = await (await call("/alternatives/notion")).text();
+  assert.match(en, /hreflang="de" href="https:\/\/example.test\/de\/alternatives\/notion"/);
+  const map = await (await call("/sitemap.xml")).text();
+  assert.match(map, /\/pt\/alternatives\/notion<\/loc>/);
+});
+
+test("every bundled product and category has a translation in each language (re-run the translation step when the catalog grows)", async () => {
+  const products: { id: string; categories: string[] }[] = JSON.parse(await readFile(new URL("../../data/products.json", import.meta.url), "utf8"));
+  for (const l of ["es", "de", "fr", "pt", "ja"]) {
+    const d = JSON.parse(await readFile(new URL(`../../data/i18n/${l}.json`, import.meta.url), "utf8"));
+    const missing = products.filter((p) => !d.taglines[p.id]).map((p) => p.id);
+    assert.deepEqual(missing, [], `${l}: taglines missing`);
+    const cats = [...new Set(products.flatMap((p) => p.categories))].filter((c) => !d.categories[c]);
+    assert.deepEqual(cats, [], `${l}: categories missing`);
+  }
+});
