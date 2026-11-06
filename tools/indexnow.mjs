@@ -8,9 +8,13 @@ if (!keyCheck.ok || (await keyCheck.text()).trim() !== KEY) throw new Error(`${B
 
 const xml = await (await fetch(`${BASE}/sitemap.xml`)).text();
 const urlList = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].replace(/&amp;/g, "&"));
-const res = await fetch("https://api.indexnow.org/indexnow", {
-  method: "POST",
-  headers: { "content-type": "application/json; charset=utf-8" },
-  body: JSON.stringify({ host: new URL(BASE).host, key: KEY, keyLocation: `${BASE}/${KEY}.txt`, urlList }),
-});
-console.log(`IndexNow: ${urlList.length} URLs → HTTP ${res.status} ${await res.text()}`);
+// IndexNow takes at most 10,000 URLs per request
+for (let i = 0; i < urlList.length; i += 10000) {
+  const batch = urlList.slice(i, i + 10000);
+  const res = await fetch("https://api.indexnow.org/indexnow", {
+    method: "POST",
+    headers: { "content-type": "application/json; charset=utf-8" },
+    body: JSON.stringify({ host: new URL(BASE).host, key: KEY, keyLocation: `${BASE}/${KEY}.txt`, urlList: batch }),
+  });
+  console.log(`IndexNow: URLs ${i + 1}–${i + batch.length} of ${urlList.length} → HTTP ${res.status} ${await res.text()}`);
+}
