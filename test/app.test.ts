@@ -259,3 +259,12 @@ test("product cards show an icon or a letter", async () => {
   if (logos.includes("affine")) assert.match(html, /<img class="logo" src="\/logo\/affine.png"/);
   assert.ok(/class="logo/.test(html));
 });
+
+test("admin dashboard page is public but holds no data; its APIs need the token", async () => {
+  const page = await call("/admin");
+  assert.equal(page.status, 200);
+  const html = await page.text();
+  assert.match(html, /noindex/);
+  assert.doesNotMatch(html, /secret/);
+  assert.equal((await call("/api/admin/stats")).status, 401);
+});

@@ -230,7 +230,7 @@ export async function runTool(deps: Deps, name: string, args: unknown, channel: 
   if (!parsed.success) throw new ValidationError(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
   const result = await tool.run(deps, parsed.data);
   const keys = [`tool:${name}`, `channel:${channel}`];
-  if (name === "search_tools") keys.push(result.matched ? "search:matched" : "search:unmatched");
+  if (name === "search_tools") keys.push(result.matched ? "search:matched" : "search:unmatched", `search:${channel}`);
   await count(deps, keys);
   return result;
 }

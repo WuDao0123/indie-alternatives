@@ -22,6 +22,7 @@ import { cleanSubmittedProduct, slugify, urlKey } from "./catalog.js";
 import { redact } from "./privacy.js";
 import { developersPage, searchPage, wantedPage, type PublicNeed } from "./demand.js";
 import { fingerprint } from "./privacy.js";
+import { adminPage } from "./admin.js";
 import { badgeSvg, homePage, submitPage, thanksPage } from "./pages.js";
 import { INDEXNOW_KEY, alternativePage, alternativesIndexPage, categoryPage, productPage, robotsTxt, seoData, sitemapXml } from "./seo.js";
 import type { Product, ProductStore, Submission, SubmissionStatus, SubmissionStore } from "./types.js";
@@ -388,10 +389,12 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     if (get && (path === "/wanted" || path === "/api/wanted")) {
       const category = url.searchParams.get("category")?.slice(0, 60) || undefined;
       const p = await publicNeeds(500, category);
+      if (path === "/wanted") await count(deps, ["page:wanted"]);
       if (path === "/api/wanted")
         return json({ min_count: publicNeedsMin, total_records: p.records, distinct_needs: p.distinct, categories: p.categories, needs: p.needs }, 200, { "cache-control": "public, max-age=600" });
       return text(wantedPage(base, p.needs, publicNeedsMin, { records: p.records, distinct: p.distinct }, p.categories, category), "text/html", 200, { "cache-control": "public, max-age=600" });
     }
+    if (get && path === "/admin") return text(adminPage(base), "text/html", 200, { "cache-control": "no-store" });
     if (get && path === "/developers") return text(developersPage(base), "text/html", 200, { "cache-control": "public, max-age=3600" });
     if (get && path === "/submit") return text(submitPage(base), "text/html");
     if (req.method === "POST" && path === "/submit") return handleSubmitForm(req, base);

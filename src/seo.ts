@@ -375,6 +375,7 @@ Allow: /
 Disallow: /api/
 Disallow: /mcp
 Disallow: /search
+Disallow: /admin
 
 Sitemap: ${base}/sitemap.xml
 `;
