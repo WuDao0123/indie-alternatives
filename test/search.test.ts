@@ -98,3 +98,13 @@ test("filters work", () => {
   const dev = top("open source", { category: "developer tools" });
   assert.ok(dev.hits.length > 0 && dev.hits.every((h) => h.product.categories.includes("Developer Tools")));
 });
+
+test("'X alternative + constraint' only matches products related to X", async () => {
+  const { ProductIndex } = await import("../src/search.js");
+  const { readFile } = await import("node:fs/promises");
+  const idx = new ProductIndex(JSON.parse(await readFile(new URL("../../data/products.json", import.meta.url), "utf8")));
+  assert.equal(idx.search("typeform alternative that works offline").matched, false, "a password manager working offline is not a Typeform alternative");
+  assert.equal(idx.search("typeform alternative").matched, true);
+  assert.equal(idx.search("something like mailchimp but cheaper").matched, true);
+  assert.equal(idx.search("password manager that works offline").matched, true);
+});

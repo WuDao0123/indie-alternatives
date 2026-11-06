@@ -83,7 +83,20 @@ export class ProductIndex {
       );
       return { query, hits: r.hits, matched };
     }
-    return this.searchRaw(query, opts);
+    const r = this.searchRaw(query, opts);
+    // "X alternative" for an X that isn't in the catalog but that products name as what they replace:
+    // only those products, and ones in their categories, can make it a match ("typeform alternative that works offline"
+    // must not count as found because a password manager works offline)
+    if (target.length && r.matched) {
+      const tagged = this.items.filter((i) => i.product.tags.some((t) => namesTarget(target, t)));
+      if (tagged.length) {
+        const cats = new Set(tagged.flatMap((i) => i.product.categories));
+        const ids = new Set(tagged.map((i) => i.product.id));
+        const related = (p: Product) => ids.has(p.id) || p.categories.some((c) => cats.has(c));
+        r.matched = r.hits.some((h) => related(h.product) && h.coverage >= MATCH_THRESHOLD);
+      }
+    }
+    return r;
   }
 
   private searchRaw(query: string, opts: SearchOptions, excludeId?: string): SearchResult {
@@ -140,6 +153,15 @@ export function alternativeTarget(q: string): string[] {
   const m = q.match(/alternatives?\s+(?:to|for)\s+((?:[^,?!.]|\.(?!\s|$))+)/) ?? q.match(/(?:^|[,?!]\s*|\.\s+)((?:[^,?!.]|\.(?!\s|$))+?)\s+alternatives?\b/);
   if (!m) return [];
   return tokenize(m[1], { stripFillers: true }).slice(0, 4);
+}
+
+/** Is this tag "X alternative(s)" / "alternative(s) to X" for the X of the query? */
+function namesTarget(target: string[], tag: string): boolean {
+  const t = normalize(tag);
+  const m = t.match(/^(.+?)\s+alternatives?$/) ?? t.match(/^alternatives?\s+(?:to|for)\s+(.+)$/);
+  if (!m) return false;
+  const toks = tokenize(m[1]);
+  return toks.length > 0 && toks.length === target.length && toks.every((x, i) => x === target[i]);
 }
 
 /** Does the "X" of an "X alternative" query name this product? ("plausible" ↔ "Plausible Analytics", "cheaper gumroad" ↔ "Gumroad") */
