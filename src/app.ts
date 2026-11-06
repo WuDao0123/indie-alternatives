@@ -20,7 +20,7 @@ import { ROUTES, coerceArgs, functionDefs, llmsTxt, openApiSpec, type FunctionFo
 import { cleanSubmittedProduct, slugify, urlKey } from "./catalog.js";
 import { redact } from "./privacy.js";
 import { badgeSvg, homePage, submitPage, thanksPage } from "./pages.js";
-import { alternativePage, alternativesIndexPage, categoryPage, robotsTxt, seoData, sitemapXml } from "./seo.js";
+import { INDEXNOW_KEY, alternativePage, alternativesIndexPage, categoryPage, robotsTxt, seoData, sitemapXml } from "./seo.js";
 import type { Product, ProductStore, Submission, SubmissionStatus, SubmissionStore } from "./types.js";
 
 export interface AppDeps extends Deps {
@@ -266,6 +266,7 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
 
   async function handleSeo(path: string, base: string): Promise<Response | undefined> {
     if (path === "/robots.txt") return text(robotsTxt(base), "text/plain", 200, PAGE_CACHE);
+    if (path === `/${INDEXNOW_KEY}.txt`) return text(INDEXNOW_KEY, "text/plain");
     const alt = path.match(/^\/alternatives(?:\/([a-z0-9-]+))?\/?$/);
     const cat = path.match(/^\/category\/([a-z0-9-]+)\/?$/);
     if (!alt && !cat && path !== "/sitemap.xml") return undefined;

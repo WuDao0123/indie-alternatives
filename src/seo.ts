@@ -13,6 +13,9 @@ import { esc, layout, type PageMeta } from "./pages.js";
 import type { ProductIndex } from "./search.js";
 import type { Product } from "./types.js";
 
+/** IndexNow key (public by design: search engines fetch /{key}.txt to confirm we own the site) */
+export const INDEXNOW_KEY = "db4f06c6a7cea6e7090ee71c3419f713";
+
 /** fewer listed alternatives than this and the page would be thin, so it isn't published */
 export const MIN_ALTERNATIVES = 3;
 
@@ -223,8 +226,12 @@ export function alternativesIndexPage(base: string, data: SeoData): string {
   );
 }
 
+export function siteUrls(data: SeoData): string[] {
+  return ["/", "/alternatives", "/submit", ...data.targets.map((t) => `/alternatives/${t.slug}`), ...data.categories.map((c) => `/category/${c.slug}`)];
+}
+
 export function sitemapXml(base: string, data: SeoData): string {
-  const urls = ["/", "/alternatives", "/submit", ...data.targets.map((t) => `/alternatives/${t.slug}`), ...data.categories.map((c) => `/category/${c.slug}`)];
+  const urls = siteUrls(data);
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.map((u) => `<url><loc>${esc(base + u)}</loc></url>`).join("\n")}
