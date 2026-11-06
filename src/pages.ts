@@ -35,19 +35,32 @@ textarea{min-height:90px}
 footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
 `;
 
-function layout(title: string, description: string, body: string): string {
+export interface PageMeta {
+  canonical?: string;
+  jsonLd?: unknown;
+}
+
+export function layout(title: string, description: string, body: string, meta: PageMeta = {}): string {
+  // "<" escaped so catalog text can never close the script tag
+  const ld = meta.jsonLd ? `<script type="application/ld+json">${JSON.stringify(meta.jsonLd).replace(/</g, "\\u003c")}</script>` : "";
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><meta name="description" content="${esc(description)}">
+${meta.canonical ? `<link rel="canonical" href="${esc(meta.canonical)}"><meta property="og:url" content="${esc(meta.canonical)}">` : ""}
+<meta property="og:type" content="website"><meta property="og:site_name" content="Indie Alternatives">
+<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta name="twitter:card" content="summary">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
-<style>${CSS}</style></head>
+<style>${CSS}</style>${ld}</head>
 <body><main><a class="brand" href="/">Indie <span>Alternatives</span></a>
 ${body}
-<footer>Indie Alternatives · <a href="/submit">List your product</a> · <a href="/llms.txt">llms.txt</a> · <a href="/openapi.json">OpenAPI</a></footer>
+<footer>Indie Alternatives · <a href="/alternatives">Browse alternatives</a> · <a href="/submit">List your product</a> · <a href="/llms.txt">llms.txt</a> · <a href="/openapi.json">OpenAPI</a></footer>
 </main></body></html>`;
 }
 
-export function homePage(base: string, opts: { products: number; needs: { need: string; count: number }[]; submissions: boolean }): string {
+export function homePage(
+  base: string,
+  opts: { products: number; needs: { need: string; count: number }[]; submissions: boolean; popular?: { slug: string; name: string }[] },
+): string {
   const mcp = `${base}/mcp`;
   const needs = opts.needs.length
     ? `<h2>Wanted: tools people asked for that don't exist yet</h2>
@@ -60,7 +73,13 @@ export function homePage(base: string, opts: { products: number; needs: { need: 
     `<h1>Indie alternatives to big-name software, right inside your AI.</h1>
 <p class="lead">Ask ChatGPT, Claude or Cursor <em>“what's an alternative to Typeform?”</em> or <em>“is there a tool that…”</em> and get products built by independent makers.</p>
 
-<h2>Add it to your AI</h2>
+${
+  opts.popular?.length
+    ? `<p>Or browse: ${opts.popular.map((t) => `<a href="/alternatives/${esc(t.slug)}">${esc(t.name)} alternatives</a>`).join(" · ")} · <a href="/alternatives">all</a></p>`
+    : ""
+}
+
+<h2 id="add">Add it to your AI</h2>
 <div class="card"><h3>ChatGPT</h3>
 <p>Settings → Apps &amp; Connectors → Advanced → enable Developer mode → Create. URL:</p><pre>${esc(mcp)}</pre></div>
 <div class="card"><h3>Claude (web &amp; desktop)</h3>
@@ -79,6 +98,7 @@ ${needs}
 
 <h2>Privacy</h2>
 <p class="muted">When no tool fits, the AI may log the need so makers can see demand. We store only the need text (with contact details stripped), an optional category and the date. No accounts, no IP addresses, no conversation content.</p>`,
+    { canonical: base + "/" },
   );
 }
 

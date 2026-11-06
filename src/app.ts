@@ -6,6 +6,7 @@
  *   /openapi.json, /functions.json, /llms.txt
  *   /catalog.json        full catalog (local installs read this)
  *   /, /submit           human pages: home and the maker submission form
+ *   /alternatives[/{x}], /category/{c}, /sitemap.xml, /robots.txt   SEO landing pages (seo.ts)
  *   /badge.svg           "Listed on Indie Alternatives" badge
  *   /api/submissions     maker submissions (JSON)
  *   /api/admin/*         review queue and stats (requires ADMIN_TOKEN)
@@ -19,6 +20,7 @@ import { ROUTES, coerceArgs, functionDefs, llmsTxt, openApiSpec, type FunctionFo
 import { cleanSubmittedProduct, slugify, urlKey } from "./catalog.js";
 import { redact } from "./privacy.js";
 import { badgeSvg, homePage, submitPage, thanksPage } from "./pages.js";
+import { alternativePage, alternativesIndexPage, categoryPage, robotsTxt, seoData, sitemapXml } from "./seo.js";
 import type { Product, ProductStore, Submission, SubmissionStatus, SubmissionStore } from "./types.js";
 
 export interface AppDeps extends Deps {
@@ -47,6 +49,8 @@ class HttpError extends Error {
 }
 
 const MAX_BODY = 1_000_000;
+/** landing pages change only when the catalog does */
+const PAGE_CACHE = { "cache-control": "public, max-age=3600" };
 const CORS = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
@@ -258,6 +262,23 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     return json({ error: "No such admin endpoint" }, 404);
   }
 
+  // ---------- SEO landing pages ----------
+
+  async function handleSeo(path: string, base: string): Promise<Response | undefined> {
+    if (path === "/robots.txt") return text(robotsTxt(base), "text/plain", 200, PAGE_CACHE);
+    const alt = path.match(/^\/alternatives(?:\/([a-z0-9-]+))?\/?$/);
+    const cat = path.match(/^\/category\/([a-z0-9-]+)\/?$/);
+    if (!alt && !cat && path !== "/sitemap.xml") return undefined;
+    const data = seoData(await indexFor(deps.catalog));
+    if (path === "/sitemap.xml") return text(sitemapXml(base, data), "application/xml", 200, PAGE_CACHE);
+    if (alt && !alt[1]) return text(alternativesIndexPage(base, data), "text/html", 200, PAGE_CACHE);
+    const t = alt ? data.targetBySlug.get(alt[1]) : undefined;
+    const c = cat ? data.categoryBySlug.get(cat[1]) : undefined;
+    if (!t && !c) return undefined; // falls through to the normal 404
+    await count(deps, [t ? "page:alternatives" : "page:category"]);
+    return text(t ? alternativePage(base, data, t) : categoryPage(base, data, c!), "text/html", 200, PAGE_CACHE);
+  }
+
   // ---------- router ----------
 
   async function route(req: Request): Promise<Response> {
@@ -278,7 +299,12 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     if (get && path === "/") {
       if (!(req.headers.get("accept") ?? "").includes("text/html")) return text(llmsTxt(deps, base), "text/plain");
       const index = await indexFor(deps.catalog);
-      return text(homePage(base, { products: index.size, needs: await publicNeeds(), submissions: Boolean(deps.submissions) }), "text/html");
+      const popular = seoData(index).targets.slice(0, 8);
+      return text(homePage(base, { products: index.size, needs: await publicNeeds(), submissions: Boolean(deps.submissions), popular }), "text/html");
+    }
+    if (get) {
+      const seo = await handleSeo(path, base);
+      if (seo) return seo;
     }
     if (get && path === "/submit") return text(submitPage(base), "text/html");
     if (req.method === "POST" && path === "/submit") return handleSubmitForm(req, base);

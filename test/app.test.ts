@@ -106,3 +106,29 @@ test("local installs default to the hosted service; INDIE_ALT_OFFLINE turns it o
   const server = await fromEnv({}, "server");
   assert.ok(!server.needs.name.includes("indiealternatives"), "self-hosted servers never forward by default");
 });
+
+test("SEO landing pages, sitemap and robots", async () => {
+  const idx = await call("/alternatives");
+  assert.equal(idx.status, 200);
+  const html = await idx.text();
+  assert.match(html, /href="\/alternatives\/notion"/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/example.test\/alternatives">/);
+
+  const notion = await call("/alternatives/notion");
+  assert.equal(notion.status, 200);
+  const page = await notion.text();
+  assert.match(page, /<h1>Indie alternatives to Notion<\/h1>/);
+  assert.match(page, /application\/ld\+json/);
+  assert.doesNotMatch(page, /<h3>\d+\. <a [^>]*>Notion<\/a>/, "X is never listed as its own alternative");
+
+  assert.equal((await call("/alternatives/no-such-app")).status, 404);
+  assert.equal((await call("/category/developer-tools")).status, 200);
+
+  const map = await (await call("/sitemap.xml")).text();
+  assert.match(map, /<loc>https:\/\/example.test\/alternatives\/notion<\/loc>/);
+  assert.match(map, /<loc>https:\/\/example.test\/category\/developer-tools<\/loc>/);
+  assert.match(await (await call("/robots.txt")).text(), /Sitemap: https:\/\/example.test\/sitemap.xml/);
+
+  const home = await (await call("/", { headers: { accept: "text/html" } })).text();
+  assert.match(home, /alternatives<\/a>/);
+});
