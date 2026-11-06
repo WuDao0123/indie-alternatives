@@ -189,19 +189,84 @@ function related(data: SeoData, t: Target, max = 8): Target[] {
     .map((x) => x.o);
 }
 
+// ---------- facts derived from the catalog (no claims beyond the data) ----------
+
+const isOpenSource = (p: Product) => p.pricing === "open-source" || p.tags.some((t) => /open.?source|开源/i.test(t));
+const isSelfHosted = (p: Product) => (p.platforms ?? []).includes("self-hosted") || p.tags.some((t) => /self.?host/i.test(t));
+const hasFreePlan = (p: Product) => ["free", "freemium", "open-source"].includes(p.pricing ?? "");
+const PLATFORM_LABEL: Record<string, string> = {
+  web: "Web", macos: "Mac", windows: "Windows", linux: "Linux", ios: "iOS", android: "Android", "self-hosted": "Self-hosted", api: "API", "browser-extension": "Browser extension",
+};
+export const platforms = (p: Product) => (p.platforms ?? []).map((x) => PLATFORM_LABEL[x] ?? x).join(", ");
+const PLATFORM_NAMES: [string, string][] = [["macos", "Mac"], ["windows", "Windows"], ["linux", "Linux"], ["ios", "iPhone and iPad"], ["android", "Android"], ["web", "the web"], ["browser-extension", "a browser extension"]];
+
+/** "A, B, C and 4 more" */
+function listNames(ps: Product[], max = 4): string {
+  const names = ps.slice(0, max).map((p) => p.name);
+  const rest = ps.length - names.length;
+  if (rest > 0) return `${names.join(", ")} and ${rest} more`;
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : (names[0] ?? "");
+}
+
+type Faq = { q: string; a: string };
+
+function faqHtml(faqs: Faq[]): string {
+  if (!faqs.length) return "";
+  return `<h2>Questions</h2>\n${faqs.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n")}`;
+}
+const faqLd = (faqs: Faq[]) =>
+  faqs.length ? [{ "@type": "FAQPage", mainEntity: faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) }] : [];
+
+function compareTable(ps: Product[], highlight?: string): string {
+  const yes = (b: boolean) => (b ? `<span class="yes">Yes</span>` : `<span class="muted">–</span>`);
+  return `<div class="scroll"><table class="compare"><thead><tr><th>Product</th><th>Price</th><th>Open source</th><th>Self-host</th><th>Platforms</th></tr></thead><tbody>
+${ps
+  .map(
+    (p) =>
+      `<tr${p.id === highlight ? ' class="me"' : ""}><td>${p.id === highlight ? esc(p.name) : `<a href="#${esc(p.id)}">${esc(p.name)}</a>`}</td><td class="nw">${esc(p.pricing ? (PRICING[p.pricing] ?? p.pricing) : "–")}</td><td>${yes(isOpenSource(p))}</td><td>${yes(isSelfHosted(p))}</td><td>${esc(platforms(p) || "–")}</td></tr>`,
+  )
+  .join("\n")}
+</tbody></table></div>`;
+}
+
+function targetFaqs(t: Target): Faq[] {
+  const out: Faq[] = [];
+  const free = t.products.filter(hasFreePlan);
+  const os = t.products.filter(isOpenSource);
+  const sh = t.products.filter(isSelfHosted);
+  if (free.length) out.push({ q: `Is there a free alternative to ${t.name}?`, a: `Yes. ${free.length} of the ${t.products.length} indie alternatives listed here have a free plan or are free: ${listNames(free)}.` });
+  if (os.length) out.push({ q: `Is there an open-source alternative to ${t.name}?`, a: `${listNames(os)} ${os.length === 1 ? "is" : "are"} open source.` });
+  if (sh.length) out.push({ q: `Can I self-host an alternative to ${t.name}?`, a: `Yes: ${listNames(sh)} can run on your own server.` });
+  const plat = PLATFORM_NAMES.map(([k, label]) => [label, t.products.filter((p) => (p.platforms ?? []).includes(k))] as const).filter(([, ps]) => ps.length && ps.length < t.products.length);
+  if (plat.length >= 2) out.push({ q: `Which ${t.name} alternatives work on Mac, Windows, iPhone or Android?`, a: plat.map(([label, ps]) => `${label === "a browser extension" ? "As a browser extension" : `On ${label}`}: ${listNames(ps, 3)}.`).join(" ") });
+  out.push({ q: `What makes these alternatives to ${t.name} “indie”?`, a: `They are built by independent developers or small teams rather than large companies. Each one is listed because it does the same core job as ${t.name}.` });
+  return out;
+}
+
+function productFaqs(p: Product, sim: Product[]): Faq[] {
+  const out: Faq[] = [];
+  const price = p.pricing ? (PRICING[p.pricing] ?? p.pricing) : "";
+  if (price) out.push({ q: `Is ${p.name} free?`, a: hasFreePlan(p) ? `${p.name} is ${p.pricing === "freemium" ? "free to start, with paid plans" : "free"}.` : `${p.name} is ${p.pricing === "commission" ? "free to use and takes a commission on sales" : "a paid product"}.` });
+  if (isOpenSource(p)) out.push({ q: `Is ${p.name} open source?`, a: `Yes, ${p.name} is open source.` });
+  if (isSelfHosted(p)) out.push({ q: `Can ${p.name} be self-hosted?`, a: `Yes, you can run ${p.name} on your own server.` });
+  if (p.platforms?.length) out.push({ q: `What platforms does ${p.name} run on?`, a: `${p.name} is available for ${platforms(p)}.` });
+  if (sim.length) out.push({ q: `What are some alternatives to ${p.name}?`, a: `Similar indie products include ${listNames(sim)}.` });
+  return out;
+}
+
 // ---------- rendering ----------
 
 const year = () => new Date().getUTCFullYear();
 const PRICING: Record<string, string> = { free: "Free", freemium: "Free plan", paid: "Paid", commission: "Commission", "open-source": "Open source" };
 
 export function productCard(p: Product, n?: number): string {
-  const meta = [p.pricing && (PRICING[p.pricing] ?? p.pricing), (p.platforms ?? []).join(", ")].filter(Boolean).map(esc).join(" · ");
+  const meta = [p.pricing && (PRICING[p.pricing] ?? p.pricing), platforms(p)].filter(Boolean).map(esc).join(" · ");
   return `<div class="card product" id="${esc(p.id)}">${logo(p)}<div class="body"><h3>${n ? `${n}. ` : ""}<a href="/product/${esc(p.id)}">${esc(p.name)}</a></h3>
 <p><strong>${esc(p.tagline)}</strong></p>${p.description && p.description !== p.tagline ? `<p>${esc(p.description)}</p>` : ""}
 <p class="count">${meta ? `${meta} · ` : ""}<a href="${esc(p.url)}" rel="noopener">Website ↗</a></p></div></div>`;
 }
 
-function itemListLd(base: string, path: string, name: string, ps: Product[]) {
+function itemListLd(base: string, path: string, name: string, ps: Product[], extra: unknown[] = []) {
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -220,6 +285,7 @@ function itemListLd(base: string, path: string, name: string, ps: Product[]) {
           { "@type": "ListItem", position: 3, name, item: base + path },
         ],
       },
+      ...extra,
     ],
   };
 }
@@ -235,14 +301,19 @@ export function alternativePage(base: string, data: SeoData, t: Target): string 
   const names = t.products.slice(0, 3).map((p) => p.name).join(", ");
   const desc = `${n} independent alternatives to ${t.name}, including ${names}.${free ? ` ${free} with a free plan.` : ""} Built by indie makers, not big companies.`;
   const rel = related(data, t);
-  const meta: PageMeta = { canonical: base + path, jsonLd: itemListLd(base, path, `Alternatives to ${t.name}`, t.products), image: `${base}/og/alt/${t.slug}.png` };
+  const faqs = targetFaqs(t);
+  const meta: PageMeta = { canonical: base + path, jsonLd: itemListLd(base, path, `Alternatives to ${t.name}`, t.products, faqLd(faqs)), image: `${base}/og/alt/${t.slug}.png` };
   return layout(
     title,
     desc,
     `<p class="count"><a href="/alternatives">All alternatives</a> › ${esc(t.name)}</p>
 <h1>Indie alternatives to ${esc(t.name)}</h1>
 <p class="lead">${n} products made by independent developers and small teams that do what ${esc(t.name)} does${free ? `, ${free} of them with a free plan` : ""}. Free and open-source options come first.</p>
+<h2>At a glance</h2>
+${compareTable(t.products)}
+<h2>The alternatives</h2>
 ${t.products.map((p, i) => productCard(p, i + 1)).join("\n")}
+${faqHtml(faqs)}
 ${askYourAi(`a cheaper ${t.name} alternative that works on my Mac`)}
 ${rel.length ? `<h2>Related</h2><ul class="needs">${rel.map((o) => `<li><a href="/alternatives/${o.slug}">Alternatives to ${esc(o.name)}</a> <span class="count">· ${o.products.length}</span></li>`).join("")}</ul>` : ""}
 ${t.categories.length ? `<p class="muted">Browse: ${t.categories.map((c) => `<a href="/category/${slugify(c)}">${esc(c)}</a>`).join(" · ")}</p>` : ""}
@@ -306,6 +377,7 @@ export function productPage(base: string, data: SeoData, p: Product): string {
   const reps = data.replaces.get(p.id) ?? [];
   const own = data.targetByName.get(p.name.toLowerCase());
   const sim = similarTo(data, p);
+  const faqs = productFaqs(p, sim);
   const pricing = p.pricing ? (PRICING[p.pricing] ?? p.pricing) : "";
   const desc = `${p.name}: ${p.tagline}.${reps.length ? ` An indie alternative to ${reps.slice(0, 3).map((t) => t.name).join(", ")}.` : ""}${sim.length ? ` Similar: ${sim.slice(0, 3).map((o) => o.name).join(", ")}.` : ""}`;
   const ld = {
@@ -328,6 +400,7 @@ export function productPage(base: string, data: SeoData, p: Product): string {
           { "@type": "ListItem", position: p.categories[0] ? 3 : 2, name: p.name, item: base + path },
         ],
       },
+      ...faqLd(faqs),
     ],
   };
   return layout(
@@ -340,13 +413,15 @@ ${p.description && p.description !== p.tagline ? `<p>${esc(p.description)}</p>` 
 <p><a class="btn" href="${esc(p.url)}" rel="noopener">Visit ${esc(p.name)} ↗</a></p>
 <div class="card">
 ${pricing ? `<p><strong>Pricing:</strong> ${esc(pricing)}</p>` : ""}
-${p.platforms?.length ? `<p><strong>Platforms:</strong> ${p.platforms.map(esc).join(", ")}</p>` : ""}
+${p.platforms?.length ? `<p><strong>Platforms:</strong> ${esc(platforms(p))}</p>` : ""}
 ${p.categories.length ? `<p><strong>Categories:</strong> ${p.categories.map((c) => `<a href="/category/${slugify(c)}">${esc(c)}</a>`).join(", ")}</p>` : ""}
 ${p.maker ? `<p><strong>Maker:</strong> ${esc(p.maker)}</p>` : ""}
 </div>
 ${reps.length ? `<h2>${esc(p.name)} is an alternative to</h2><p>${reps.map((t) => `<a href="/alternatives/${t.slug}">${esc(t.name)}</a>`).join(" · ")}</p>` : ""}
 ${own ? `<p>Looking for something else? See <a href="/alternatives/${own.slug}">${own.products.length} alternatives to ${esc(own.name)}</a>.</p>` : ""}
+${sim.length ? `<h2>${esc(p.name)} compared with similar tools</h2>${compareTable([p, ...sim.slice(0, 6)], p.id)}` : ""}
 ${sim.length ? `<h2>Similar to ${esc(p.name)}</h2>${sim.map((o) => productCard(o)).join("\n")}` : ""}
+${faqHtml(faqs)}
 <p class="muted">Is this your product? <a href="/submit">Submit an update</a>.</p>`,
     { canonical: base + path, jsonLd: ld, noindex: !indexable(data, p) },
   );

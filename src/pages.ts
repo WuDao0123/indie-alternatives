@@ -53,6 +53,11 @@ ol.wanted .need{font-weight:600}.pill{display:inline-block;padding:1px 8px;borde
 .chip:hover{border-color:var(--accent);color:var(--accent)}
 .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:32px 0 0}.split .card{margin:0}.split h3{margin-top:0}
 details.card summary{cursor:pointer}details.card[open] summary{margin-bottom:8px}
+table.compare{width:100%;min-width:620px;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:10px}
+table.compare th,table.compare td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+table.compare th{color:var(--muted);font-weight:600;white-space:nowrap}table.compare tr:last-child td{border-bottom:0}
+table.compare tr.me td{background:var(--code);font-weight:600}table.compare a{color:var(--fg)}
+.yes{color:var(--ok);font-weight:600}.nw{white-space:nowrap}.scroll{overflow-x:auto}
 footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
 `;
 

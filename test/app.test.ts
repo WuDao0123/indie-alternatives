@@ -268,3 +268,13 @@ test("admin dashboard page is public but holds no data; its APIs need the token"
   assert.doesNotMatch(html, /secret/);
   assert.equal((await call("/api/admin/stats")).status, 401);
 });
+
+test("landing pages carry a comparison table and data-backed FAQ", async () => {
+  const alt = await (await call("/alternatives/notion")).text();
+  assert.match(alt, /<table class="compare">/);
+  assert.match(alt, /Is there a free alternative to Notion\?/);
+  assert.match(alt, /"@type":"FAQPage"/);
+  const prod = await (await call("/product/docmost")).text();
+  assert.match(prod, /Is Docmost open source\?/);
+  assert.match(prod, /Docmost compared with similar tools/);
+});
