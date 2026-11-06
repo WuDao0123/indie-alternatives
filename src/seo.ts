@@ -13,6 +13,11 @@ import { slugify } from "./catalog.js";
 import { esc, layout, type PageMeta } from "./pages.js";
 import type { ProductIndex } from "./search.js";
 import type { Product } from "./types.js";
+// product pages with nothing to link to, precomputed by tools/og.mjs: computing it for the whole catalog per request
+// exceeds the Workers CPU limit. Products added later (not in the list) count as indexable.
+import thinIds from "../data/thin-products.json" with { type: "json" };
+
+const THIN = new Set<string>(thinIds);
 
 /** IndexNow key (public by design: search engines fetch /{key}.txt to confirm we own the site) */
 export const INDEXNOW_KEY = "db4f06c6a7cea6e7090ee71c3419f713";
@@ -336,7 +341,8 @@ ${sim.length ? `<h2>Similar to ${esc(p.name)}</h2>${sim.map((o) => productCard(o
 }
 
 /** a product page is worth indexing when it links somewhere useful */
-const indexable = (data: SeoData, p: Product) => (data.replaces.get(p.id)?.length ?? 0) > 0 || similarTo(data, p).length > 0;
+export const isThin = (data: SeoData, p: Product) => !(data.replaces.get(p.id)?.length ?? 0) && similarTo(data, p).length === 0;
+const indexable = (_data: SeoData, p: Product) => !THIN.has(p.id);
 
 export function siteUrls(data: SeoData): string[] {
   return ["/", "/alternatives", "/submit", ...data.targets.map((t) => `/alternatives/${t.slug}`), ...data.categories.map((c) => `/category/${c.slug}`), ...data.index.all().filter((p) => indexable(data, p)).map((p) => `/product/${p.id}`)];

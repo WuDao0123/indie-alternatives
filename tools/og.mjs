@@ -1,10 +1,12 @@
+// Also writes data/thin-products.json (see seo.ts).
 // Renders Open Graph share images (1200×630 PNG) into public/og/, served as Workers static assets.
 //   public/og/default.png, public/og/alt/{slug}.png, public/og/cat/{slug}.png
 // Runs before every deploy (npm run deploy). Needs a build first (npm run build).
 import { mkdir, readFile, rm } from "node:fs/promises";
 import sharp from "sharp";
 import { ProductIndex } from "../dist/src/search.js";
-import { seoData } from "../dist/src/seo.js";
+import { isThin, seoData } from "../dist/src/seo.js";
+import { writeFile } from "node:fs/promises";
 
 const root = new URL("../", import.meta.url);
 const out = new URL("public/og/", root);
@@ -57,3 +59,8 @@ await mkdir(new URL("cat/", out), { recursive: true });
 for (let i = 0; i < jobs.length; i += 16)
   await Promise.all(jobs.slice(i, i + 16).map(([file, c]) => sharp(Buffer.from(card(c))).png({ compressionLevel: 9, palette: true }).toFile(new URL(file, out).pathname)));
 console.log(`og: ${jobs.length} images → public/og/`);
+
+// thin product pages (noindex, left out of the sitemap); bundled into the Worker
+const thin = data.index.all().filter((p) => isThin(data, p)).map((p) => p.id).sort();
+await writeFile(new URL("data/thin-products.json", root), JSON.stringify(thin, null, 0) + "\n");
+console.log(`thin product pages: ${thin.length} → data/thin-products.json`);

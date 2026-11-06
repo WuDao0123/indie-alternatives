@@ -155,3 +155,13 @@ test("product pages, share images", async () => {
   const map = await (await call("/sitemap.xml")).text();
   assert.match(map, /\/product\/docmost<\/loc>/);
 });
+
+test("data/thin-products.json is current (npm run og regenerates it)", async () => {
+  const { ProductIndex } = await import("../src/search.js");
+  const { seoData, isThin } = await import("../src/seo.js");
+  const raw = JSON.parse(await readFile(new URL("../../data/products.json", import.meta.url), "utf8"));
+  const data = seoData(new ProductIndex(raw));
+  const want = data.index.all().filter((p) => isThin(data, p)).map((p) => p.id).sort();
+  const got = JSON.parse(await readFile(new URL("../../data/thin-products.json", import.meta.url), "utf8"));
+  assert.deepEqual(got, want);
+});
