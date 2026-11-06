@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { createApp } from "../src/app.js";
 import { MergedSource } from "../src/catalog.js";
 import { JsonFileSource, BUNDLED_CATALOG, fromEnv } from "../src/sources.js";
-import { SCHEMA, SqlNeedStore, SqlProductStore, SqlStatsStore, SqlSubmissionStore } from "../src/sql.js";
+import { MIGRATIONS, SCHEMA, SqlNeedStore, SqlProductStore, SqlStatsStore, SqlSubmissionStore } from "../src/sql.js";
 import { openSqlite } from "../src/sqlite-node.js";
 
 const db = await openSqlite(":memory:");
@@ -28,6 +28,7 @@ const call = (path: string, init: RequestInit & { json?: unknown; admin?: boolea
 
 test("migration file matches the schema used by Node", async () => {
   assert.equal(await readFile(new URL("../../migrations/0001_init.sql", import.meta.url), "utf8"), SCHEMA);
+  for (const [file, sql] of Object.entries(MIGRATIONS)) assert.equal(await readFile(new URL(`../../migrations/${file}`, import.meta.url), "utf8"), sql);
 });
 
 test("submission → review → approve → searchable", async () => {
@@ -216,4 +217,38 @@ test("developers guide, and the source label is counted but not stored with the 
   const needs = await (await call("/api/admin/needs", { admin: true })).json();
   assert.ok(!JSON.stringify(needs).includes("notes-app"));
   assert.equal((await call("/api/needs", { method: "POST", json: { need: "something useful here", source: "bad source!" } })).status, 400);
+});
+
+test("wanted board: similar wordings group, partial needs apart, category filter", async () => {
+  const { groupNeeds } = await import("../src/core.js");
+  const { makeNeedRecord } = await import("../src/privacy.js");
+  const g = groupNeeds([
+    makeNeedRecord({ need: "invoice app for plumbers" }),
+    makeNeedRecord({ need: "invoicing tool for plumbers and electricians" }),
+    makeNeedRecord({ need: "plumbers invoice" }),
+    makeNeedRecord({ need: "invoice app for plumbers", kind: "partial" }),
+    makeNeedRecord({ need: "habit tracker for cats" }),
+  ]);
+  assert.equal(g[0].count, 3);
+  assert.equal(g[0].kind, "missing");
+  assert.ok(g.some((x) => x.kind === "partial" && x.count === 1));
+  assert.equal(g.length, 3);
+
+  // "none of these fit" lands in the partial section with an inferred category
+  for (let i = 0; i < 2; i++)
+    await call("/search/none", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "q=" + encodeURIComponent("typeform alternative that works offline") });
+  const w = await (await call("/api/wanted")).json();
+  const n = w.needs.find((x: any) => x.need === "typeform alternative that works offline");
+  assert.equal(n.kind, "partial");
+  assert.deepEqual(n.categories, ["Forms & Surveys"]);
+  assert.ok(w.categories.includes("Forms & Surveys"));
+  const filtered = await (await call("/api/wanted?category=" + encodeURIComponent("Forms & Surveys"))).json();
+  assert.ok(filtered.needs.every((x: any) => x.categories.includes("Forms & Surveys")));
+  const html = await (await call("/wanted")).text();
+  assert.match(html, /Exists, but doesn't fit/);
+
+  // checking a need from the board doesn't count as someone asking again
+  const before = (await (await call("/api/admin/needs", { admin: true })).json()).total_records;
+  await call("/search?q=" + encodeURIComponent("zzkq orbital beekeeping ledger") + "&from=wanted");
+  assert.equal((await (await call("/api/admin/needs", { admin: true })).json()).total_records, before);
 });

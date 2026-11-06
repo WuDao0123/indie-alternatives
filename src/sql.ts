@@ -45,6 +45,13 @@ CREATE TABLE IF NOT EXISTS products (
 );
 `;
 
+/** Later migrations, in order; keep each in sync with migrations/000N_*.sql (a test checks this) */
+export const MIGRATIONS: Record<string, string> = {
+  "0002_need_kind.sql": `-- "missing": nothing exists; "partial": tools came back but none fit (NULL = missing, for rows before this column)
+ALTER TABLE needs ADD COLUMN kind TEXT;
+`,
+};
+
 const today = () => new Date().toISOString().slice(0, 10);
 const undef = <T>(v: T | null) => (v === null ? undefined : v);
 
@@ -53,14 +60,15 @@ export class SqlNeedStore implements NeedStore {
   constructor(private db: SqlDatabase) {}
   async append(r: NeedRecord): Promise<void> {
     await this.db
-      .prepare("INSERT INTO needs (id, need, category, platform, budget, day, fingerprint) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .bind(r.id, r.need, r.category ?? null, r.platform ?? null, r.budget ?? null, r.day, r.fingerprint)
+      .prepare("INSERT INTO needs (id, need, category, platform, budget, day, fingerprint, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(r.id, r.need, r.category ?? null, r.platform ?? null, r.budget ?? null, r.day, r.fingerprint, r.kind === "partial" ? "partial" : null)
       .run();
   }
   async list(): Promise<NeedRecord[]> {
     const { results } = await this.db.prepare("SELECT * FROM needs ORDER BY day").all<any>();
     return results.map((r) => ({
       id: r.id, need: r.need, category: undef(r.category), platform: undef(r.platform), budget: undef(r.budget), day: r.day, fingerprint: r.fingerprint,
+      ...(r.kind === "partial" ? { kind: "partial" as const } : {}),
     }));
   }
 }

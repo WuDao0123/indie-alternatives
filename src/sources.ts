@@ -79,7 +79,7 @@ export class WebhookNeedStore implements NeedStore {
       const res = await fetch(this.url, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ need: r.need, category: r.category, platform: r.platform, budget: r.budget }),
+        body: JSON.stringify({ need: r.need, category: r.category, platform: r.platform, budget: r.budget, kind: r.kind }),
         signal: AbortSignal.timeout(5000),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

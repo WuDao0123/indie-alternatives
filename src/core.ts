@@ -2,7 +2,8 @@
  * Core logic and tool definitions, shared by MCP, REST/OpenAPI and function calling.
  */
 import { z } from "zod";
-import type { CatalogSource, NeedStore, Product, StatsStore } from "./types.js";
+import type { CatalogSource, NeedKind, NeedRecord, NeedStore, Product, StatsStore } from "./types.js";
+import { tokenize } from "./text.js";
 import { ProductIndex } from "./search.js";
 import { makeNeedRecord } from "./privacy.js";
 
@@ -53,6 +54,10 @@ export const logNeedInput = {
   category: z.string().max(50).optional().describe("Optional: rough domain of the need"),
   platform: z.string().max(50).optional().describe("Optional: preferred platform"),
   budget: z.string().max(50).optional().describe("Optional: rough budget, e.g. \"free\" or \"under $10/month\""),
+  kind: z
+    .enum(["missing", "partial"])
+    .optional()
+    .describe("Optional: \"partial\" when search_tools returned tools but none fit the need; default \"missing\" (nothing like it exists)"),
   source: z
     .string()
     .max(40)
@@ -61,8 +66,9 @@ export const logNeedInput = {
     .describe("Optional, for apps that forward their users' needs: a short name of your app, e.g. \"my-notes-app\". Only counted, never shown with the need."),
 };
 export const listNeedsInput = {
-  limit: z.number().int().min(1).max(100).optional().describe("Number of results, default 20"),
+  limit: z.number().int().min(1).max(1000).optional().describe("Number of results, default 20"),
   keyword: z.string().optional().describe("Optional: only needs containing this keyword"),
+  category: z.string().optional().describe("Optional: only needs in this category"),
 };
 
 export interface ToolDef {
@@ -151,29 +157,65 @@ export const TOOLS: ToolDef[] = [
     description: "Aggregated anonymous unmet needs, sorted by how often they were requested. Useful for indie makers looking for product ideas.",
     input: listNeedsInput,
     readOnly: true,
-    async run(deps, { limit = 20, keyword }) {
+    async run(deps, { limit = 20, keyword, category }) {
       const all = await deps.needs.list();
-      const groups = new Map<string, { need: string; count: number; first_seen: string; last_seen: string; categories: Set<string> }>();
-      for (const r of all) {
-        if (keyword && !r.need.toLowerCase().includes(String(keyword).toLowerCase())) continue;
-        const g = groups.get(r.fingerprint);
-        if (g) {
-          g.count++;
-          if (r.day < g.first_seen) g.first_seen = r.day;
-          if (r.day > g.last_seen) g.last_seen = r.day;
-          if (r.category) g.categories.add(r.category);
-        } else {
-          groups.set(r.fingerprint, { need: r.need, count: 1, first_seen: r.day, last_seen: r.day, categories: new Set(r.category ? [r.category] : []) });
-        }
-      }
-      const needs = [...groups.values()]
-        .sort((a, b) => b.count - a.count || b.last_seen.localeCompare(a.last_seen))
-        .slice(0, limit)
-        .map((g) => ({ ...g, categories: [...g.categories] }));
-      return { total_records: all.length, distinct_needs: groups.size, needs };
+      const groups = groupNeeds(all, { keyword, category });
+      return { total_records: all.length, distinct_needs: groups.length, needs: groups.slice(0, limit) };
     },
   },
 ];
+
+export interface NeedGroup {
+  need: string;
+  count: number;
+  first_seen: string;
+  last_seen: string;
+  categories: string[];
+  kind: NeedKind;
+}
+
+/** words that carry the need, for comparing phrasings */
+const needTokens = (s: string) => new Set<string>(tokenize(s, { stripFillers: true }));
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (!a.size || !b.size) return 0;
+  let n = 0;
+  for (const t of a) if (b.has(t)) n++;
+  return n / (a.size + b.size - n);
+}
+
+/**
+ * Group needs that say the same thing in different words: same fingerprint, or ≥ 60% shared words.
+ * "missing" and "partial" needs are kept apart. Sorted by count, then most recent.
+ */
+export function groupNeeds(records: NeedRecord[], opts: { keyword?: string; category?: string } = {}): NeedGroup[] {
+  const kw = opts.keyword?.toLowerCase();
+  const cat = opts.category?.toLowerCase();
+  type G = NeedGroup & { tokens: Set<string>; fps: Set<string>; texts: Map<string, number>; cats: Map<string, number> };
+  const groups: G[] = [];
+  for (const r of [...records].sort((a, b) => a.day.localeCompare(b.day))) {
+    if (kw && !r.need.toLowerCase().includes(kw)) continue;
+    if (cat && (r.category ?? "").toLowerCase() !== cat) continue;
+    const kind: NeedKind = r.kind === "partial" ? "partial" : "missing";
+    const toks = needTokens(r.need);
+    const g = groups.find((x) => x.kind === kind && (x.fps.has(r.fingerprint) || jaccard(x.tokens, toks) >= 0.6));
+    if (g) {
+      g.count++;
+      g.last_seen = r.day > g.last_seen ? r.day : g.last_seen;
+      g.fps.add(r.fingerprint);
+      g.texts.set(r.need, (g.texts.get(r.need) ?? 0) + 1);
+      if (r.category) g.cats.set(r.category, (g.cats.get(r.category) ?? 0) + 1);
+    } else {
+      groups.push({
+        need: r.need, count: 1, first_seen: r.day, last_seen: r.day, categories: [], kind,
+        tokens: toks, fps: new Set([r.fingerprint]), texts: new Map([[r.need, 1]]), cats: new Map(r.category ? [[r.category, 1]] : []),
+      });
+    }
+  }
+  const top = <K>(m: Map<K, number>) => [...m].sort((a, b) => b[1] - a[1]).map(([k]) => k);
+  return groups
+    .map(({ tokens, fps, texts, cats, ...g }) => ({ ...g, need: top(texts)[0], categories: top(cats).slice(0, 3) }))
+    .sort((a, b) => b.count - a.count || b.last_seen.localeCompare(a.last_seen));
+}
 
 export function enabledTools(deps: Deps): ToolDef[] {
   return TOOLS.filter((t) => t.name !== "list_unmet_needs" || deps.exposeNeedsList !== false);

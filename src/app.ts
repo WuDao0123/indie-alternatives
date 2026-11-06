@@ -16,7 +16,7 @@ import { randomUUID } from "node:crypto";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { jsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/types.js";
 import { createServer } from "./server.js";
-import { NotFoundError, TOOLS, ValidationError, count, enabledTools, indexFor, invalidateIndex, runTool, type Deps } from "./core.js";
+import { NotFoundError, TOOLS, groupNeeds, ValidationError, count, enabledTools, indexFor, invalidateIndex, runTool, type Deps } from "./core.js";
 import { ROUTES, coerceArgs, functionDefs, llmsTxt, openApiSpec, type FunctionFormat } from "./rest.js";
 import { cleanSubmittedProduct, slugify, urlKey } from "./catalog.js";
 import { redact } from "./privacy.js";
@@ -120,10 +120,13 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
   };
 
   /** needs asked at least publicNeedsMin times: safe to show publicly */
-  async function publicNeeds(limit = 10) {
-    const t = TOOLS.find((x) => x.name === "list_unmet_needs")!;
-    const r = (await t.run(deps, { limit: 1000 })) as { total_records: number; distinct_needs: number; needs: PublicNeed[] };
-    return { needs: r.needs.filter((n) => n.count >= publicNeedsMin).slice(0, limit), records: r.total_records, distinct: r.distinct_needs };
+  async function publicNeeds(limit = 10, category?: string) {
+    const all = await deps.needs.list();
+    const groups = groupNeeds(all).filter((n) => n.count >= publicNeedsMin);
+    // categories offered as filters: only those of needs that are public anyway
+    const categories = [...new Set(groups.flatMap((g) => g.categories))].sort();
+    const shown = category ? groups.filter((g) => g.categories.some((c) => c.toLowerCase() === category.toLowerCase())) : groups;
+    return { needs: shown.slice(0, limit) as PublicNeed[], categories, records: all.length, distinct: groupNeeds(all).length };
   }
 
   // ---------- people searching on the site ----------
@@ -138,12 +141,31 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     return { "set-cookie": `${LOGGED}=${list}; Path=/search; Max-Age=86400; SameSite=Lax; Secure; HttpOnly` };
   }
 
-  async function logWebNeed(req: Request, q: string, key: string): Promise<{ logged: boolean; headers: Record<string, string> }> {
+  /** rough domain of a search: the most common catalog category among the 5 closest results (needs 2+) */
+  function categoryOf(hits: Product[]): string | undefined {
+    const n = new Map<string, number>();
+    for (const p of hits.slice(0, 5)) for (const c of p.categories) n.set(c, (n.get(c) ?? 0) + 1);
+    const [best] = [...n].sort((a, b) => b[1] - a[1]);
+    return best && best[1] >= 2 ? best[0] : undefined;
+  }
+
+  async function searchHits(q: string) {
+    const r = (await runTool(deps, "search_tools", { query: q, limit: 8 }, "web")) as { matched: boolean; results: { id: string }[] };
+    const index = await indexFor(deps.catalog);
+    return { matched: r.matched, hits: r.results.map((x) => index.get(x.id)).filter((p): p is Product => Boolean(p)) };
+  }
+
+  async function logWebNeed(
+    req: Request,
+    q: string,
+    key: string,
+    extra: { category?: string; kind?: "partial" } = {},
+  ): Promise<{ logged: boolean; headers: Record<string, string> }> {
     if (!loggable(q)) return { logged: false, headers: {} };
     const fp = fingerprint(q).slice(0, 8);
     const seen = loggedBefore(req);
     if (seen.has(fp)) return { logged: true, headers: {} };
-    await runTool(deps, "log_unmet_need", { need: q }, "web");
+    await runTool(deps, "log_unmet_need", { need: q, ...extra }, "web");
     await count(deps, [key]);
     return { logged: true, headers: rememberLogged(seen, fp) };
   }
@@ -152,16 +174,18 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     const html = (body: string, status = 200, h: Record<string, string> = {}) => text(body, "text/html", status, { "cache-control": "no-store", ...h });
     if (req.method === "POST") {
       const q = (new URLSearchParams(await readBody(req)).get("q") ?? "").trim().slice(0, 200);
-      const r = await logWebNeed(req, q, "web:none-fit");
+      const { hits } = loggable(q) ? await searchHits(q) : { hits: [] };
+      const r = await logWebNeed(req, q, "web:none-fit", { kind: "partial", category: categoryOf(hits) });
       return html(searchPage(base, q, { matched: false, hits: [], logged: r.logged, reported: true }), 200, r.headers);
     }
     const q = (url.searchParams.get("q") ?? "").trim().slice(0, 200);
     if (!q) return html(searchPage(base, "", { matched: false, hits: [], logged: false }));
-    const r = (await runTool(deps, "search_tools", { query: q, limit: 8 }, "web")) as { matched: boolean; results: { id: string }[] };
-    const index = await indexFor(deps.catalog);
-    const hits = r.results.map((x) => index.get(x.id)).filter((p): p is Product => Boolean(p));
+    const r = await searchHits(q);
+    const hits = r.hits;
     const shown = r.matched ? hits : hits.slice(0, 3); // weak matches: a few, but still offer "none fit"
-    const logged = r.matched ? { logged: false, headers: {} } : await logWebNeed(req, q, "web:unmatched");
+    // re-running a need from the board is a developer checking, not a new person asking
+    const fromBoard = url.searchParams.get("from") === "wanted";
+    const logged = r.matched || fromBoard ? { logged: false, headers: {} } : await logWebNeed(req, q, "web:unmatched", { category: categoryOf(hits) });
     return html(searchPage(base, q, { matched: r.matched, hits: shown, logged: logged.logged }), 200, logged.headers);
   }
 
@@ -362,9 +386,11 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     }
     if (path === "/search" || (req.method === "POST" && path === "/search/none")) return handleSearch(req, url, base);
     if (get && (path === "/wanted" || path === "/api/wanted")) {
-      const p = await publicNeeds(200);
-      if (path === "/api/wanted") return json({ min_count: publicNeedsMin, total_records: p.records, distinct_needs: p.distinct, needs: p.needs }, 200, { "cache-control": "public, max-age=600" });
-      return text(wantedPage(base, p.needs, publicNeedsMin, { records: p.records, distinct: p.distinct }), "text/html", 200, { "cache-control": "public, max-age=600" });
+      const category = url.searchParams.get("category")?.slice(0, 60) || undefined;
+      const p = await publicNeeds(500, category);
+      if (path === "/api/wanted")
+        return json({ min_count: publicNeedsMin, total_records: p.records, distinct_needs: p.distinct, categories: p.categories, needs: p.needs }, 200, { "cache-control": "public, max-age=600" });
+      return text(wantedPage(base, p.needs, publicNeedsMin, { records: p.records, distinct: p.distinct }, p.categories, category), "text/html", 200, { "cache-control": "public, max-age=600" });
     }
     if (get && path === "/developers") return text(developersPage(base), "text/html", 200, { "cache-control": "public, max-age=3600" });
     if (get && path === "/submit") return text(submitPage(base), "text/html");

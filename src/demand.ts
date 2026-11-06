@@ -14,6 +14,7 @@ export interface PublicNeed {
   first_seen: string;
   last_seen: string;
   categories: string[];
+  kind: "missing" | "partial";
 }
 
 const PRICING: Record<string, string> = { free: "Free", freemium: "Free plan", paid: "Paid", commission: "Commission", "open-source": "Open source" };
@@ -49,25 +50,49 @@ ${PRIVACY}`;
   return layout(q ? `${q} · Search · Indie Alternatives` : "Search · Indie Alternatives", "Search indie-made tools.", body, { canonical: base + "/search", noindex: true }, q);
 }
 
-export function wantedPage(base: string, needs: PublicNeed[], min: number, totals: { records: number; distinct: number }): string {
-  const rows = needs.length
-    ? `<ol class="needs">${needs
-        .map(
-          (n) =>
-            `<li><strong>${esc(n.need)}</strong> <span class="count">· asked ${n.count}× · ${esc(n.first_seen)} → ${esc(n.last_seen)}${n.categories.length ? ` · ${n.categories.map(esc).join(", ")}` : ""}</span></li>`,
-        )
-        .join("\n")}</ol>`
-    : `<div class="card"><p><strong>Collecting.</strong> A need appears here once ${min} or more people have asked for it, so no single person can be identified.</p></div>`;
+function needList(needs: PublicNeed[]): string {
+  return `<ol class="wanted">${needs
+    .map(
+      (n) => `<li><div class="need">${esc(n.need)}</div>
+<div class="count"><span class="pill">${n.count}× asked</span> ${n.first_seen === n.last_seen ? esc(n.last_seen) : `${esc(n.first_seen)} → ${esc(n.last_seen)}`}${
+        n.categories.length ? ` · ${n.categories.map((c) => `<a href="/wanted?category=${encodeURIComponent(c)}">${esc(c)}</a>`).join(", ")}` : ""
+      } · <a href="/search?q=${encodeURIComponent(n.need)}&amp;from=wanted" rel="nofollow">search it</a></div></li>`,
+    )
+    .join("\n")}</ol>`;
+}
+
+export function wantedPage(
+  base: string,
+  needs: PublicNeed[],
+  min: number,
+  totals: { records: number; distinct: number },
+  categories: string[] = [],
+  category?: string,
+): string {
+  const missing = needs.filter((n) => n.kind !== "partial");
+  const partial = needs.filter((n) => n.kind === "partial");
+  const filters = categories.length
+    ? `<p class="chips"><a class="chip${category ? "" : " on"}" href="/wanted">All</a>${categories
+        .map((c) => `<a class="chip${c.toLowerCase() === category?.toLowerCase() ? " on" : ""}" href="/wanted?category=${encodeURIComponent(c)}">${esc(c)}</a>`)
+        .join("")}</p>`
+    : "";
+  const empty = `<div class="card"><p><strong>${category ? `Nothing in ${esc(category)} yet.` : "Collecting."}</strong> A need appears here once ${min} or more people have asked for it, so no single person can be identified.</p></div>`;
   return layout(
-    "Wanted: Software People Are Looking For · Indie Alternatives",
+    category ? `Wanted: ${category} Tools People Are Looking For · Indie Alternatives` : "Wanted: Software People Are Looking For · Indie Alternatives",
     "Tools people searched for that don't exist yet, from anonymous searches on this site and in AI assistants. Product ideas for indie developers.",
     `<h1>Wanted: tools people are looking for</h1>
-<p class="lead">Real searches from people on this site and in ChatGPT, Claude and Cursor where no existing tool fit. Sorted by how many people asked. Build one and <a href="/submit">list it</a>, and the people who search next will find you.</p>
-${rows}
-<p class="muted">${totals.records} searches logged so far, ${totals.distinct} distinct needs. Only needs asked ${min}+ times are shown. Developers: the same list as JSON is at <a href="/api/wanted">/api/wanted</a>.</p>
+<p class="lead">Real searches from people on this site and in ChatGPT, Claude and Cursor. Sorted by how many people asked. Build one and <a href="/submit">list it</a>, and the people who search next will find you.</p>
+${filters}
+<h2>Nobody has built this yet</h2>
+<p class="muted">Searches where no tool came close.</p>
+${missing.length ? needList(missing) : empty}
+<h2>Exists, but doesn't fit</h2>
+<p class="muted">Tools came back, and people said none of them fit. Room for a better or more focused product.</p>
+${partial.length ? needList(partial) : empty}
+<p class="muted">${totals.records} searches logged so far, ${totals.distinct} distinct needs (similar wordings are grouped). Only needs asked ${min}+ times are shown. Developers: the same list as JSON is at <a href="/api/wanted">/api/wanted</a>${category ? ` (add <code>?category=${esc(category)}</code>)` : ""}.</p>
 <h2>How this works</h2>
-<p class="muted">When a search here or in an AI assistant finds nothing, we save only the need text (contact details stripped), an optional category and the date. No accounts, no IP addresses, no conversation content.</p>`,
-    { canonical: base + "/wanted" },
+<p class="muted">When a search here or in an AI assistant finds nothing, or someone says none of the results fit, we save only the need text (contact details stripped), a rough category and the date. No accounts, no IP addresses, no conversation content.</p>`,
+    { canonical: category ? `${base}/wanted?category=${encodeURIComponent(category)}` : base + "/wanted", noindex: Boolean(category) && needs.length === 0 },
   );
 }
 

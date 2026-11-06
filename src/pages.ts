@@ -41,6 +41,9 @@ textarea{min-height:90px}
 .search input:focus{outline:2px solid var(--accent);outline-offset:1px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 16px}
 .chip{display:inline-block;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--fg);text-decoration:none;font-size:14px}
+.chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+ol.wanted{list-style:none;padding:0;margin:8px 0;counter-reset:w}ol.wanted li{padding:12px 0;border-bottom:1px solid var(--line)}
+ol.wanted .need{font-weight:600}.pill{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--code);color:var(--fg);font-weight:600}
 .chip:hover{border-color:var(--accent);color:var(--accent)}
 .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:32px 0 0}.split .card{margin:0}.split h3{margin-top:0}
 details.card summary{cursor:pointer}details.card[open] summary{margin-bottom:8px}

@@ -31,7 +31,10 @@ export interface NeedRecord {
   day: string;
   /** Hash of the normalized need text, used to group similar needs */
   fingerprint: string;
+  /** "missing": no tool exists (default); "partial": tools came back but none fit */
+  kind?: NeedKind;
 }
+export type NeedKind = "missing" | "partial";
 
 export interface NeedStore {
   readonly name: string;

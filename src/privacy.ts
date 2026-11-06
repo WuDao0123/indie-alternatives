@@ -31,7 +31,10 @@ export function fingerprint(text: string): string {
   return createHash("sha256").update(toks.join("|") || normalize(text)).digest("hex").slice(0, 16);
 }
 
-export function makeNeedRecord(input: { need: string; category?: string; platform?: string; budget?: string }, now = new Date()): NeedRecord {
+export function makeNeedRecord(
+  input: { need: string; category?: string; platform?: string; budget?: string; kind?: "missing" | "partial" },
+  now = new Date(),
+): NeedRecord {
   const need = redact(input.need);
   const clip = (s?: string) => (s ? redact(s).slice(0, 50) : undefined);
   return {
@@ -42,5 +45,6 @@ export function makeNeedRecord(input: { need: string; category?: string; platfor
     budget: clip(input.budget),
     day: now.toISOString().slice(0, 10),
     fingerprint: fingerprint(need),
+    ...(input.kind === "partial" ? { kind: "partial" as const } : {}),
   };
 }
