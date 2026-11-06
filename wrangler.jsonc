@@ -2,6 +2,8 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "indie-alternatives",
   "main": "src/worker.ts",
+  // share images rendered by tools/og.mjs (npm run deploy does it); served before the Worker runs
+  "assets": { "directory": "./public" },
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
   // Privacy promise: no access logs. Keep Workers Logs / traces off.

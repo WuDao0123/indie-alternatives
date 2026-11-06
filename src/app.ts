@@ -6,7 +6,7 @@
  *   /openapi.json, /functions.json, /llms.txt
  *   /catalog.json        full catalog (local installs read this)
  *   /, /submit           human pages: home and the maker submission form
- *   /alternatives[/{x}], /category/{c}, /sitemap.xml, /robots.txt   SEO landing pages (seo.ts)
+ *   /alternatives[/{x}], /category/{c}, /product/{id}, /sitemap.xml, /robots.txt   SEO landing pages (seo.ts)
  *   /badge.svg           "Listed on Indie Alternatives" badge
  *   /api/submissions     maker submissions (JSON)
  *   /api/admin/*         review queue and stats (requires ADMIN_TOKEN)
@@ -20,7 +20,7 @@ import { ROUTES, coerceArgs, functionDefs, llmsTxt, openApiSpec, type FunctionFo
 import { cleanSubmittedProduct, slugify, urlKey } from "./catalog.js";
 import { redact } from "./privacy.js";
 import { badgeSvg, homePage, submitPage, thanksPage } from "./pages.js";
-import { INDEXNOW_KEY, alternativePage, alternativesIndexPage, categoryPage, robotsTxt, seoData, sitemapXml } from "./seo.js";
+import { INDEXNOW_KEY, alternativePage, alternativesIndexPage, categoryPage, productPage, robotsTxt, seoData, sitemapXml } from "./seo.js";
 import type { Product, ProductStore, Submission, SubmissionStatus, SubmissionStore } from "./types.js";
 
 export interface AppDeps extends Deps {
@@ -266,11 +266,20 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
 
   async function handleSeo(path: string, base: string): Promise<Response | undefined> {
     if (path === "/robots.txt") return text(robotsTxt(base), "text/plain", 200, PAGE_CACHE);
+    // share images are static assets on Workers; one not rendered yet (e.g. a page from a newly approved product) gets the default
+    if (/^\/og\/(alt|cat)\/[a-z0-9-]+\.png$/.test(path)) return new Response(null, { status: 302, headers: { location: "/og/default.png" } });
     if (path === `/${INDEXNOW_KEY}.txt`) return text(INDEXNOW_KEY, "text/plain");
     const alt = path.match(/^\/alternatives(?:\/([a-z0-9-]+))?\/?$/);
     const cat = path.match(/^\/category\/([a-z0-9-]+)\/?$/);
-    if (!alt && !cat && path !== "/sitemap.xml") return undefined;
+    const prod = path.match(/^\/product\/([\w-]+)\/?$/);
+    if (!alt && !cat && !prod && path !== "/sitemap.xml") return undefined;
     const data = seoData(await indexFor(deps.catalog));
+    if (prod) {
+      const p = data.index.get(prod[1]);
+      if (!p) return undefined;
+      await count(deps, ["page:product"]);
+      return text(productPage(base, data, p), "text/html", 200, PAGE_CACHE);
+    }
     if (path === "/sitemap.xml") return text(sitemapXml(base, data), "application/xml", 200, PAGE_CACHE);
     if (alt && !alt[1]) return text(alternativesIndexPage(base, data), "text/html", 200, PAGE_CACHE);
     const t = alt ? data.targetBySlug.get(alt[1]) : undefined;

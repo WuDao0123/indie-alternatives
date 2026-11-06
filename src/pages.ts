@@ -38,17 +38,25 @@ footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-si
 export interface PageMeta {
   canonical?: string;
   jsonLd?: unknown;
+  /** og:image URL */
+  image?: string;
+  /** keep thin pages out of search indexes */
+  noindex?: boolean;
 }
 
 export function layout(title: string, description: string, body: string, meta: PageMeta = {}): string {
   // "<" escaped so catalog text can never close the script tag
+  // every page gets a share image; landing pages pass their own (tools/og.mjs renders them)
+  const image = meta.image ?? (meta.canonical ? new URL("/og/default.png", meta.canonical).href : undefined);
   const ld = meta.jsonLd ? `<script type="application/ld+json">${JSON.stringify(meta.jsonLd).replace(/</g, "\\u003c")}</script>` : "";
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><meta name="description" content="${esc(description)}">
 ${meta.canonical ? `<link rel="canonical" href="${esc(meta.canonical)}"><meta property="og:url" content="${esc(meta.canonical)}">` : ""}
 <meta property="og:type" content="website"><meta property="og:site_name" content="Indie Alternatives">
-<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta name="twitter:card" content="summary">
+<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}">
+${image ? `<meta property="og:image" content="${esc(image)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${esc(image)}">` : `<meta name="twitter:card" content="summary">`}
+${meta.noindex ? `<meta name="robots" content="noindex,follow">` : ""}
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 <style>${CSS}</style>${ld}</head>
 <body><main><a class="brand" href="/">Indie <span>Alternatives</span></a>

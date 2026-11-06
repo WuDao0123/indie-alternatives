@@ -132,3 +132,26 @@ test("SEO landing pages, sitemap and robots", async () => {
   const home = await (await call("/", { headers: { accept: "text/html" } })).text();
   assert.match(home, /alternatives<\/a>/);
 });
+
+test("product pages, share images", async () => {
+  const res = await call("/product/docmost");
+  assert.equal(res.status, 200);
+  const html = await res.text();
+  assert.match(html, /<h1>Docmost<\/h1>/);
+  assert.match(html, /href="\/alternatives\/notion"/, "links the targets it replaces");
+  assert.match(html, /Similar to Docmost/);
+  assert.doesNotMatch(html, /noindex/);
+  assert.match(html, /og:image" content="https:\/\/example.test\/og\/default.png"/);
+  assert.equal((await call("/product/no-such-product")).status, 404);
+
+  const alt = await (await call("/alternatives/notion")).text();
+  assert.match(alt, /og:image" content="https:\/\/example.test\/og\/alt\/notion.png"/);
+  assert.match(alt, /href="\/product\/docmost"/, "cards link to product pages");
+
+  const missing = await call("/og/alt/brand-new.png");
+  assert.equal(missing.status, 302);
+  assert.equal(missing.headers.get("location"), "/og/default.png");
+
+  const map = await (await call("/sitemap.xml")).text();
+  assert.match(map, /\/product\/docmost<\/loc>/);
+});

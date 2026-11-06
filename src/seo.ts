@@ -4,6 +4,7 @@
  *   /alternatives                index of every "alternatives to X" page and every category
  *   /alternatives/{slug}         "Indie alternatives to X", for each X named by ≥ MIN_ALTERNATIVES products' tags ("x alternative")
  *   /category/{slug}             every product in a category
+ *   /product/{id}                one product: what it is, what it replaces, similar products
  *   /sitemap.xml, /robots.txt
  *
  * Pages are derived from the live index (bundled catalog + approved submissions), memoized per index object.
@@ -36,6 +37,11 @@ export interface SeoData {
   targetBySlug: Map<string, Target>;
   categories: Category[];
   categoryBySlug: Map<string, Category>;
+  /** product id → the targets (with a page) it is an alternative to */
+  replaces: Map<string, Target[]>;
+  /** product name (lowercase) → its own "alternatives to" page, when it has one */
+  targetByName: Map<string, Target>;
+  index: ProductIndex;
 }
 
 /** brand spellings that plain title case gets wrong; also disambiguates generic words */
@@ -58,13 +64,38 @@ const BRANDS: Record<string, string> = {
   "viral loops": "Viral Loops", "facebook groups": "Facebook Groups", "epidemic sound": "Epidemic Sound", gmail: "Gmail",
 };
 
+Object.assign(BRANDS, {
+  "amazon ses": "Amazon SES", aws: "AWS", "aws ec2": "AWS EC2", bugherd: "BugHerd", clickfunnels: "ClickFunnels", coreldraw: "CorelDRAW",
+  crashplan: "CrashPlan", "dall-e": "DALL·E", datagrip: "DataGrip", dbeaver: "DBeaver", "github issues": "GitHub Issues", gofundme: "GoFundMe",
+  hellosign: "HelloSign", "icloud photos": "iCloud Photos", imovie: "iMovie", influxdb: "InfluxDB", langchain: "LangChain", "linkedin jobs": "LinkedIn Jobs",
+  marketmuse: "MarketMuse", mindmanager: "MindManager", "mysql workbench": "MySQL Workbench", netsuite: "NetSuite", onedrive: "OneDrive",
+  onenote: "OneNote", onetrust: "OneTrust", "openai api": "OpenAI API", pgadmin: "pgAdmin", phpbb: "phpBB", prtg: "PRTG", sap: "SAP",
+  selfcontrol: "SelfControl", sugarcrm: "SugarCRM", surveymonkey: "SurveyMonkey", vwo: "VWO", vbulletin: "vBulletin", "final cut": "Final Cut Pro",
+  logic: "Logic Pro", preview: "macOS Preview", "terminal app": "macOS Terminal", arc: "Arc Browser", hunter: "Hunter.io", avid: "Avid Media Composer",
+  "zendesk chat": "Zendesk Chat", "giphy capture": "GIPHY Capture", "git gui": "Git GUI", "netlify forms": "Netlify Forms", "wix stores": "Wix Stores",
+  "shopify plus": "Shopify Plus", "stripe billing": "Stripe Billing", "firebase auth": "Firebase Auth", "firebase analytics": "Firebase Analytics",
+  "cloudflare workers": "Cloudflare Workers", "laravel forge": "Laravel Forge", "lemon squeezy": "Lemon Squeezy", "postman mock server": "Postman Mock Server",
+  "help scout": "Help Scout", "crazy egg": "Crazy Egg", "be focused": "Be Focused", "cold turkey": "Cold Turkey", "font book": "Font Book",
+  "noun project": "Noun Project", "uptime kuma": "Uptime Kuma", "tv time": "TV Time", "pro tools": "Pro Tools", "topaz": "Topaz Photo AI",
+});
+
+/** tag spellings that mean the same app; the first-published slug wins so live URLs keep working */
+const ALIASES: Record<string, string> = {
+  "microsoft teams": "teams", "microsoft word": "word", "microsoft excel": "excel", "microsoft outlook": "outlook", "microsoft visio": "visio",
+  roam: "roam research", "outreach.io": "outreach", "keyword planner": "google keyword planner", "atlassian statuspage": "statuspage",
+  "gmail app": "gmail", "hubspot crm": "hubspot crm", "final cut pro": "final cut", "logic pro": "logic",
+};
+/** too generic to be a useful "alternatives to X" page */
+const SKIP = new Set(["vpn"]);
+
 const titleCase = (s: string) => s.replace(/(^|[\s-])([a-z])/g, (_, a, b) => a + b.toUpperCase());
 
 /** "x alternative(s)" / "alternative(s) to|for x" → "x" */
 function targetOf(tag: string): string | undefined {
   const t = tag.trim().toLowerCase();
   const m = t.match(/^(.+?)\s+alternatives?$/) ?? t.match(/^alternatives?\s+(?:to|for)\s+(.+)$/);
-  return m?.[1].trim() || undefined;
+  const k = m?.[1].trim();
+  return !k || SKIP.has(k) ? undefined : (ALIASES[k] ?? k);
 }
 
 const cache = new WeakMap<ProductIndex, SeoData>();
@@ -98,11 +129,20 @@ export function seoData(index: ProductIndex): SeoData {
     .map(([name, products]) => ({ slug: slugify(name), name, products: [...products].sort((a, b) => a.name.localeCompare(b.name)) }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const replaces = new Map<string, Target[]>();
+  for (const t of targets) for (const p of t.products) (replaces.get(p.id) ?? replaces.set(p.id, []).get(p.id)!).push(t);
+  const targetByName = new Map<string, Target>();
+  for (const t of targets) targetByName.set(t.name.toLowerCase(), t);
+  for (const [key, t] of [...groups.keys()].map((k) => [k, targets.find((x) => x.slug === slugify(k))] as const)) if (t) targetByName.set(key, t);
+
   const data: SeoData = {
     targets,
     targetBySlug: new Map(targets.map((t) => [t.slug, t])),
     categories,
     categoryBySlug: new Map(categories.map((c) => [c.slug, c])),
+    replaces,
+    targetByName,
+    index,
   };
   cache.set(index, data);
   return data;
@@ -139,9 +179,9 @@ const PRICING: Record<string, string> = { free: "Free", freemium: "Free plan", p
 
 function productCard(p: Product, n?: number): string {
   const meta = [p.pricing && (PRICING[p.pricing] ?? p.pricing), (p.platforms ?? []).join(", ")].filter(Boolean).map(esc).join(" · ");
-  return `<div class="card" id="${esc(p.id)}"><h3>${n ? `${n}. ` : ""}<a href="${esc(p.url)}" rel="noopener">${esc(p.name)}</a></h3>
+  return `<div class="card" id="${esc(p.id)}"><h3>${n ? `${n}. ` : ""}<a href="/product/${esc(p.id)}">${esc(p.name)}</a></h3>
 <p><strong>${esc(p.tagline)}</strong></p>${p.description && p.description !== p.tagline ? `<p>${esc(p.description)}</p>` : ""}
-${meta ? `<p class="count">${meta}</p>` : ""}</div>`;
+<p class="count">${meta ? `${meta} · ` : ""}<a href="${esc(p.url)}" rel="noopener">Website ↗</a></p></div>`;
 }
 
 function itemListLd(base: string, path: string, name: string, ps: Product[]) {
@@ -178,7 +218,7 @@ export function alternativePage(base: string, data: SeoData, t: Target): string 
   const names = t.products.slice(0, 3).map((p) => p.name).join(", ");
   const desc = `${n} independent alternatives to ${t.name}, including ${names}.${free ? ` ${free} with a free plan.` : ""} Built by indie makers, not big companies.`;
   const rel = related(data, t);
-  const meta: PageMeta = { canonical: base + path, jsonLd: itemListLd(base, path, `Alternatives to ${t.name}`, t.products) };
+  const meta: PageMeta = { canonical: base + path, jsonLd: itemListLd(base, path, `Alternatives to ${t.name}`, t.products), image: `${base}/og/alt/${t.slug}.png` };
   return layout(
     title,
     desc,
@@ -208,7 +248,7 @@ export function categoryPage(base: string, data: SeoData, c: Category): string {
 ${alts.length ? `<p>Looking to replace something? ${alts.map((t) => `<a href="/alternatives/${t.slug}">${esc(t.name)}</a>`).join(" · ")}</p>` : ""}
 ${c.products.map((p) => productCard(p)).join("\n")}
 ${askYourAi(`an indie ${c.name.toLowerCase()} tool that's free for small teams`)}`,
-    { canonical: base + path, jsonLd: itemListLd(base, path, `Indie ${c.name} tools`, c.products) },
+    { canonical: base + path, jsonLd: itemListLd(base, path, `Indie ${c.name} tools`, c.products), image: `${base}/og/cat/${c.slug}.png` },
   );
 }
 
@@ -226,8 +266,80 @@ export function alternativesIndexPage(base: string, data: SeoData): string {
   );
 }
 
+const similarCache = new WeakMap<SeoData, Map<string, Product[]>>();
+
+/** products like p: the same "alternative to X" search the AI tools use, kept only when they share a category or 2+ tags */
+export function similarTo(data: SeoData, p: Product, max = 8): Product[] {
+  let m = similarCache.get(data);
+  if (!m) similarCache.set(data, (m = new Map()));
+  const hit = m.get(p.id);
+  if (hit) return hit;
+  const tags = new Set(p.tags.filter((t) => !/alternative/.test(t)));
+  const out = data.index
+    .search(`alternative to ${p.name}`, { limit: 20 })
+    .hits.map((h) => h.product)
+    .filter((o) => o.id !== p.id && (o.categories.some((c) => p.categories.includes(c)) || o.tags.filter((t) => tags.has(t)).length >= 2))
+    .slice(0, max);
+  m.set(p.id, out);
+  return out;
+}
+
+export function productPage(base: string, data: SeoData, p: Product): string {
+  const path = `/product/${p.id}`;
+  const reps = data.replaces.get(p.id) ?? [];
+  const own = data.targetByName.get(p.name.toLowerCase());
+  const sim = similarTo(data, p);
+  const pricing = p.pricing ? (PRICING[p.pricing] ?? p.pricing) : "";
+  const desc = `${p.name}: ${p.tagline}.${reps.length ? ` An indie alternative to ${reps.slice(0, 3).map((t) => t.name).join(", ")}.` : ""}${sim.length ? ` Similar: ${sim.slice(0, 3).map((o) => o.name).join(", ")}.` : ""}`;
+  const ld = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        name: p.name,
+        url: p.url,
+        description: p.description || p.tagline,
+        applicationCategory: p.categories[0],
+        operatingSystem: (p.platforms ?? []).join(", ") || undefined,
+        ...(p.maker ? { author: { "@type": "Person", name: p.maker } } : {}),
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Indie Alternatives", item: base + "/" },
+          ...(p.categories[0] ? [{ "@type": "ListItem", position: 2, name: p.categories[0], item: `${base}/category/${slugify(p.categories[0])}` }] : []),
+          { "@type": "ListItem", position: p.categories[0] ? 3 : 2, name: p.name, item: base + path },
+        ],
+      },
+    ],
+  };
+  return layout(
+    `${p.name}: ${p.tagline} · Indie Alternatives`,
+    desc,
+    `<p class="count"><a href="/alternatives">All</a>${p.categories[0] ? ` › <a href="/category/${slugify(p.categories[0])}">${esc(p.categories[0])}</a>` : ""} › ${esc(p.name)}</p>
+<h1>${esc(p.name)}</h1>
+<p class="lead">${esc(p.tagline)}</p>
+${p.description && p.description !== p.tagline ? `<p>${esc(p.description)}</p>` : ""}
+<p><a class="btn" href="${esc(p.url)}" rel="noopener">Visit ${esc(p.name)} ↗</a></p>
+<div class="card">
+${pricing ? `<p><strong>Pricing:</strong> ${esc(pricing)}</p>` : ""}
+${p.platforms?.length ? `<p><strong>Platforms:</strong> ${p.platforms.map(esc).join(", ")}</p>` : ""}
+${p.categories.length ? `<p><strong>Categories:</strong> ${p.categories.map((c) => `<a href="/category/${slugify(c)}">${esc(c)}</a>`).join(", ")}</p>` : ""}
+${p.maker ? `<p><strong>Maker:</strong> ${esc(p.maker)}</p>` : ""}
+</div>
+${reps.length ? `<h2>${esc(p.name)} is an alternative to</h2><p>${reps.map((t) => `<a href="/alternatives/${t.slug}">${esc(t.name)}</a>`).join(" · ")}</p>` : ""}
+${own ? `<p>Looking for something else? See <a href="/alternatives/${own.slug}">${own.products.length} alternatives to ${esc(own.name)}</a>.</p>` : ""}
+${sim.length ? `<h2>Similar to ${esc(p.name)}</h2>${sim.map((o) => productCard(o)).join("\n")}` : ""}
+<p class="muted">Is this your product? <a href="/submit">Submit an update</a>.</p>`,
+    { canonical: base + path, jsonLd: ld, noindex: !indexable(data, p) },
+  );
+}
+
+/** a product page is worth indexing when it links somewhere useful */
+const indexable = (data: SeoData, p: Product) => (data.replaces.get(p.id)?.length ?? 0) > 0 || similarTo(data, p).length > 0;
+
 export function siteUrls(data: SeoData): string[] {
-  return ["/", "/alternatives", "/submit", ...data.targets.map((t) => `/alternatives/${t.slug}`), ...data.categories.map((c) => `/category/${c.slug}`)];
+  return ["/", "/alternatives", "/submit", ...data.targets.map((t) => `/alternatives/${t.slug}`), ...data.categories.map((c) => `/category/${c.slug}`), ...data.index.all().filter((p) => indexable(data, p)).map((p) => `/product/${p.id}`)];
 }
 
 export function sitemapXml(base: string, data: SeoData): string {

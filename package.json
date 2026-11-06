@@ -20,7 +20,8 @@
     "test": "tsc && node --test dist/test/*.test.js",
     "prepublishOnly": "npm test",
     "dev:worker": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "og": "tsc && node tools/og.mjs",
+    "deploy": "npm run og && wrangler deploy",
     "db:migrate": "wrangler d1 migrations apply DB --remote",
     "db:migrate:local": "wrangler d1 migrations apply DB --local"
   },
