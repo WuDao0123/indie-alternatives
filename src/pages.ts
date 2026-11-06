@@ -21,6 +21,7 @@ code,pre{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:va
 code{padding:2px 5px}
 pre{padding:12px 14px;overflow-x:auto;margin:6px 0 0;white-space:pre}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:12px 0}
+.card>:first-child{margin-top:0}.card>:last-child{margin-bottom:0}.card h3{margin-bottom:4px}.card p{margin:6px 0}
 .btn{display:inline-block;background:var(--accent);color:var(--accent-fg);padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;border:0;font-size:16px;cursor:pointer}
 .muted{color:var(--muted)}
 ul.needs{padding-left:20px}ul.needs li{margin:4px 0}
@@ -35,6 +36,14 @@ textarea{min-height:90px}
 .top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;margin-bottom:40px}.top .brand{margin:0}
 .search{display:flex;gap:6px;flex:1 1 260px;max-width:420px}.search input{flex:1;min-width:0;padding:8px 11px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--fg);font:inherit}
 .search button{padding:8px 14px;border:0;border-radius:7px;background:var(--accent);color:var(--accent-fg);font:inherit;font-weight:600;cursor:pointer}
+.hero{margin:0 0 8px}.hero h1{max-width:640px}
+.search.big{max-width:none;margin:8px 0 18px}.search.big input{padding:13px 15px;font-size:17px;border-width:2px}.search.big button{padding:13px 22px;font-size:16px}
+.search input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 16px}
+.chip{display:inline-block;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--fg);text-decoration:none;font-size:14px}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:32px 0 0}.split .card{margin:0}.split h3{margin-top:0}
+details.card summary{cursor:pointer}details.card[open] summary{margin-bottom:8px}
 footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
 `;
 
@@ -43,6 +52,8 @@ export interface PageMeta {
   jsonLd?: unknown;
   /** og:image URL */
   image?: string;
+  /** the page has its own big search box */
+  hideSearch?: boolean;
   /** keep thin pages out of search indexes */
   noindex?: boolean;
 }
@@ -63,55 +74,64 @@ ${meta.noindex ? `<meta name="robots" content="noindex,follow">` : ""}
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 <style>${CSS}</style>${ld}</head>
 <body><main><div class="top"><a class="brand" href="/">Indie <span>Alternatives</span></a>
-<form class="search" method="get" action="/search" role="search"><input type="search" name="q" value="${esc(q)}" placeholder="What do you need a tool for?" aria-label="Search tools" maxlength="200"><button type="submit">Search</button></form></div>
+${meta.hideSearch ? "" : `<form class="search" method="get" action="/search" role="search"><input type="search" name="q" value="${esc(q)}" placeholder="What do you need a tool for?" aria-label="Search tools" maxlength="200"><button type="submit">Search</button></form>`}</div>
 ${body}
 <footer>Indie Alternatives · <a href="/wanted">Wanted: what people look for</a> · <a href="/alternatives">Browse alternatives</a> · <a href="/developers">For developers</a> · <a href="/submit">List your product</a> · <a href="/llms.txt">llms.txt</a> · <a href="/openapi.json">OpenAPI</a></footer>
 </main></body></html>`;
 }
 
+const EXAMPLES = ["notion alternative", "self-hosted uptime monitoring", "invoice app for freelancers", "add a nice background to screenshots", "privacy-friendly analytics"];
+
 export function homePage(
   base: string,
-  opts: { products: number; needs: { need: string; count: number }[]; submissions: boolean; popular?: { slug: string; name: string }[] },
+  opts: {
+    products: number;
+    needs: { need: string; count: number }[];
+    submissions: boolean;
+    popular?: { slug: string; name: string }[];
+    pages?: number;
+    logged?: number;
+  },
 ): string {
   const mcp = `${base}/mcp`;
-  const needs = opts.needs.length
-    ? `<h2>Wanted: tools people asked for that don't exist yet</h2>
-<p class="muted">Anonymous requests from AI conversations where no tool fit. Build one and <a href="/submit">list it</a>.</p>
-<ul class="needs">${opts.needs.map((n) => `<li>${esc(n.need)} <span class="count">· asked ${n.count}×</span></li>`).join("")}</ul>`
-    : "";
+  const chips = (items: { href: string; label: string }[]) => `<p class="chips">${items.map((i) => `<a class="chip" href="${esc(i.href)}">${esc(i.label)}</a>`).join("")}</p>`;
+  const client = (name: string, body: string, open = false) => `<details class="card"${open ? " open" : ""}><summary><strong>${name}</strong></summary>${body}</details>`;
+  const wanted = opts.needs.length
+    ? `<ol class="needs">${opts.needs.map((n) => `<li>${esc(n.need)} <span class="count">· asked ${n.count}×</span></li>`).join("")}</ol>
+<p><a href="/wanted">See the full board</a></p>`
+    : `<p class="muted">The board is filling up: a need appears once 3 or more people have searched for it without finding a tool. <a href="/wanted">How it works</a></p>`;
   return layout(
-    "Indie Alternatives",
-    "Indie-made alternatives to big-name software, right inside ChatGPT, Claude, Cursor and any AI assistant.",
-    `<h1>Indie alternatives to big-name software, right inside your AI.</h1>
-<p class="lead">Ask ChatGPT, Claude or Cursor <em>“what's an alternative to Typeform?”</em> or <em>“is there a tool that…”</em> and get products built by independent makers.</p>
+    "Indie Alternatives: Find Indie-Made Tools, See What People Need",
+    "Search indie-made alternatives to big-name software. Searches that find nothing become a public demand board for independent developers.",
+    `<section class="hero">
+<h1>Find a tool made by an independent developer.</h1>
+<p class="lead">Describe what you want to do, or name an app you want to replace. ${opts.products.toLocaleString("en-US")} indie-made products${opts.pages ? ` and ${opts.pages} “alternatives to” guides` : ""}.</p>
+<form class="search big" method="get" action="/search" role="search"><input type="search" name="q" placeholder="e.g. a cheaper Calendly for a small clinic" aria-label="What do you need a tool for?" maxlength="200" autofocus><button type="submit">Search</button></form>
+<p class="count">Try:</p>
+${chips(EXAMPLES.map((e) => ({ href: `/search?q=${encodeURIComponent(e)}`, label: e })))}
+${opts.popular?.length ? `<p class="count">Popular alternatives:</p>${chips([...opts.popular.map((t) => ({ href: `/alternatives/${t.slug}`, label: t.name })), { href: "/alternatives", label: "All →" }])}` : ""}
+</section>
 
-${
-  opts.popular?.length
-    ? `<p>Or browse: ${opts.popular.map((t) => `<a href="/alternatives/${esc(t.slug)}">${esc(t.name)} alternatives</a>`).join(" · ")} · <a href="/alternatives">all</a></p>`
-    : ""
-}
+<div class="split">
+<div class="card"><h3>Can't find it?</h3><p>Your search is saved anonymously and shown to independent developers, who use it to decide what to build next.</p></div>
+<div class="card"><h3>Building something?</h3><p>See <a href="/wanted">what people searched for and couldn't find</a>, forward your own users' needs with <a href="/developers">two HTTP calls</a>, and <a href="/submit">list your product</a> for free.</p></div>
+</div>
 
-<h2 id="add">Add it to your AI</h2>
-<div class="card"><h3>ChatGPT</h3>
-<p>Settings → Apps &amp; Connectors → Advanced → enable Developer mode → Create. URL:</p><pre>${esc(mcp)}</pre></div>
-<div class="card"><h3>Claude (web &amp; desktop)</h3>
-<p>Settings → Connectors → Add custom connector. URL:</p><pre>${esc(mcp)}</pre></div>
-<div class="card"><h3>Claude Code</h3><pre>claude mcp add --transport http indie-alternatives ${esc(mcp)}</pre></div>
-<div class="card"><h3>Cursor, Windsurf, VS Code, Gemini CLI and other MCP clients</h3>
-<pre>${esc(JSON.stringify({ mcpServers: { "indie-alternatives": { url: mcp } } }, null, 2))}</pre>
-<p class="muted">Local install instead: <code>npx -y indie-alternatives-mcp</code></p></div>
-<div class="card"><h3>Custom GPTs, Dify, n8n, your own agent</h3>
-<p>Import <a href="/openapi.json">${esc(base)}/openapi.json</a>, or get function-calling definitions from <code>${esc(base)}/functions.json?format=openai|anthropic|gemini</code>.</p></div>
+<h2>Wanted: what people couldn't find</h2>
+${wanted}
 
-<h2>For makers</h2>
-<p><strong>Looking for something to build?</strong> <a href="/wanted">See what people searched for and couldn't find</a>, from searches on this site and in AI assistants.</p>
-<p>${opts.products} products listed so far. Listing is free: when someone asks their AI for a tool like yours, it can recommend you.</p>
-${opts.submissions ? `<p><a class="btn" href="/submit">List your product</a></p>` : ""}
-${needs}
+<h2 id="add">Use it inside your AI</h2>
+<p>Ask ChatGPT, Claude or Cursor <em>“what's an alternative to Typeform?”</em> or <em>“is there a tool that…”</em> and get indie-made products. Add this URL as a connector:</p>
+<pre>${esc(mcp)}</pre>
+${client("ChatGPT", `<p>Settings → Apps &amp; Connectors → Advanced → enable Developer mode → Create, then paste the URL above.</p>`)}
+${client("Claude (web &amp; desktop)", `<p>Settings → Connectors → Add custom connector, then paste the URL above.</p>`)}
+${client("Claude Code", `<pre>claude mcp add --transport http indie-alternatives ${esc(mcp)}</pre>`)}
+${client("Cursor, Windsurf, VS Code, Gemini CLI and other MCP clients", `<pre>${esc(JSON.stringify({ mcpServers: { "indie-alternatives": { url: mcp } } }, null, 2))}</pre><p class="muted">Local install instead: <code>npx -y indie-alternatives-mcp</code></p>`)}
+${client("Custom GPTs, Dify, n8n, your own agent", `<p>Import <a href="/openapi.json">${esc(base)}/openapi.json</a>, or get function-calling definitions from <code>${esc(base)}/functions.json?format=openai|anthropic|gemini</code>. More in the <a href="/developers">developer guide</a>.</p>`)}
 
 <h2>Privacy</h2>
 <p class="muted">When a search on this site finds nothing, or no tool fits in an AI assistant, the need is logged so makers can see demand. We store only the need text (with contact details stripped), an optional category and the date. No accounts, no IP addresses, no conversation content.</p>`,
-    { canonical: base + "/" },
+    { canonical: base + "/", hideSearch: true },
   );
 }
 

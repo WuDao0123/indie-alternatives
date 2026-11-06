@@ -352,8 +352,9 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     if (get && path === "/") {
       if (!(req.headers.get("accept") ?? "").includes("text/html")) return text(llmsTxt(deps, base), "text/plain");
       const index = await indexFor(deps.catalog);
-      const popular = seoData(index).targets.slice(0, 8);
-      return text(homePage(base, { products: index.size, needs: (await publicNeeds()).needs, submissions: Boolean(deps.submissions), popular }), "text/html");
+      const seo = seoData(index);
+      const popular = seo.targets.slice(0, 10);
+      return text(homePage(base, { products: index.size, needs: (await publicNeeds()).needs, submissions: Boolean(deps.submissions), popular, pages: seo.targets.length }), "text/html");
     }
     if (get) {
       const seo = await handleSeo(path, base);
