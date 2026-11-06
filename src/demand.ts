@@ -7,6 +7,7 @@
  */
 import { esc, layout } from "./pages.js";
 import { productCard } from "./seo.js";
+import { alternatesFor } from "./localized.js";
 import type { Product } from "./types.js";
 
 export interface PublicNeed {
@@ -87,7 +88,11 @@ ${partial.length ? needList(partial) : empty}
 <p class="muted">${totals.records} searches logged so far, ${totals.distinct} distinct needs (similar wordings are grouped). Only needs asked ${min}+ times are shown. Developers: the same list as JSON is at <a href="/api/wanted">/api/wanted</a>${category ? ` (add <code>?category=${esc(category)}</code>)` : ""}.</p>
 <h2>How this works</h2>
 <p class="muted">When a search here or in an AI assistant finds nothing, or someone says none of the results fit, we save only the need text (contact details stripped), a rough category and the date. No accounts, no IP addresses, no conversation content.</p>`,
-    { canonical: category ? `${base}/wanted?category=${encodeURIComponent(category)}` : base + "/wanted", noindex: Boolean(category) && needs.length === 0 },
+    {
+      canonical: category ? `${base}/wanted?category=${encodeURIComponent(category)}` : base + "/wanted",
+      noindex: Boolean(category) && needs.length === 0,
+      alternates: category ? undefined : alternatesFor(base, "/wanted"),
+    },
   );
 }
 

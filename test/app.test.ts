@@ -306,5 +306,26 @@ test("every bundled product and category has a translation in each language (re-
     assert.deepEqual(missing, [], `${l}: taglines missing`);
     const cats = [...new Set(products.flatMap((p) => p.categories))].filter((c) => !d.categories[c]);
     assert.deepEqual(cats, [], `${l}: categories missing`);
+    const noDesc = products.filter((p: any) => p.description && p.description !== p.tagline && !d.descriptions?.[p.id]).map((p) => p.id);
+    assert.deepEqual(noDesc, [], `${l}: descriptions missing`);
   }
+});
+
+test("localized product pages and demand board", async () => {
+  const p = await call("/ja/product/docmost");
+  assert.equal(p.status, 200);
+  const html = await p.text();
+  assert.match(html, /<html lang="ja">/);
+  assert.match(html, /Docmost を見る/);
+  assert.match(html, /href="\/ja\/alternatives\/notion"/);
+  assert.match(html, /hreflang="en" href="https:\/\/example.test\/product\/docmost"/);
+  assert.equal((await call("/de/product/no-such-thing")).status, 404);
+  const w = await call("/es/wanted");
+  assert.equal(w.status, 200);
+  assert.match(await w.text(), /Nadie lo ha creado todavía/);
+  const alt = await (await call("/fr/alternatives/notion")).text();
+  assert.match(alt, /href="\/fr\/product\/docmost"/);
+  const map = await (await call("/sitemap.xml")).text();
+  assert.match(map, /\/pt\/product\/docmost<\/loc>/);
+  assert.match(map, /\/de\/wanted<\/loc>/);
 });

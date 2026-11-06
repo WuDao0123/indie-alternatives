@@ -71,7 +71,7 @@ const MSG: Record<Lang, M> = {
     chrome: {
       placeholder: "¿Para qué necesitas una herramienta?",
       button: "Buscar",
-      footer: [{ href: "/es/alternatives", label: "Ver alternativas" }, { href: "/wanted", label: "Lo que la gente busca (EN)" }, { href: "/submit", label: "Añade tu producto (EN)" }],
+      footer: [{ href: "/es/alternatives", label: "Ver alternativas" }, { href: "/es/wanted", label: "Lo que la gente busca" }, { href: "/submit", label: "Añade tu producto (EN)" }],
     },
     price: { free: "Gratis", freemium: "Plan gratuito", paid: "De pago", commission: "Comisión", "open-source": "Código abierto" },
     platform: platforms({ "self-hosted": "Autoalojado", "browser-extension": "Extensión de navegador" }),
@@ -89,7 +89,7 @@ const MSG: Record<Lang, M> = {
       cantH: "¿No lo encuentras?",
       cantP: "Tu búsqueda se guarda de forma anónima y la ven desarrolladores independientes, que la usan para decidir qué construir.",
       buildH: "¿Estás creando algo?",
-      buildP: `Mira <a href="/wanted">lo que la gente buscó y no encontró</a> (en inglés) y <a href="/submit">añade tu producto</a> gratis.`,
+      buildP: `Mira <a href="/es/wanted">lo que la gente buscó y no encontró</a> y <a href="/submit">añade tu producto</a> gratis.`,
       ai: `También funciona dentro de ChatGPT, Claude y Cursor: <a href="/#add">cómo añadirlo</a> (en inglés).`,
     },
     index: {
@@ -139,7 +139,7 @@ const MSG: Record<Lang, M> = {
     chrome: {
       placeholder: "Wofür brauchst du ein Tool?",
       button: "Suchen",
-      footer: [{ href: "/de/alternatives", label: "Alternativen ansehen" }, { href: "/wanted", label: "Was Leute suchen (EN)" }, { href: "/submit", label: "Produkt eintragen (EN)" }],
+      footer: [{ href: "/de/alternatives", label: "Alternativen ansehen" }, { href: "/de/wanted", label: "Was Leute suchen" }, { href: "/submit", label: "Produkt eintragen (EN)" }],
     },
     price: { free: "Kostenlos", freemium: "Gratis-Plan", paid: "Kostenpflichtig", commission: "Provision", "open-source": "Open Source" },
     platform: platforms({ "self-hosted": "Self-Hosting", "browser-extension": "Browser-Erweiterung" }),
@@ -157,7 +157,7 @@ const MSG: Record<Lang, M> = {
       cantH: "Nichts gefunden?",
       cantP: "Deine Suche wird anonym gespeichert und unabhängigen Entwicklern gezeigt, die damit entscheiden, was sie als Nächstes bauen.",
       buildH: "Du baust etwas?",
-      buildP: `Sieh dir an, <a href="/wanted">wonach Leute gesucht und nichts gefunden haben</a> (Englisch), und <a href="/submit">trag dein Produkt kostenlos ein</a>.`,
+      buildP: `Sieh dir an, <a href="/de/wanted">wonach Leute gesucht und nichts gefunden haben</a>, und <a href="/submit">trag dein Produkt kostenlos ein</a>.`,
       ai: `Funktioniert auch in ChatGPT, Claude und Cursor: <a href="/#add">so richtest du es ein</a> (Englisch).`,
     },
     index: {
@@ -207,7 +207,7 @@ const MSG: Record<Lang, M> = {
     chrome: {
       placeholder: "De quel outil avez-vous besoin ?",
       button: "Rechercher",
-      footer: [{ href: "/fr/alternatives", label: "Voir les alternatives" }, { href: "/wanted", label: "Ce que les gens cherchent (EN)" }, { href: "/submit", label: "Ajouter votre produit (EN)" }],
+      footer: [{ href: "/fr/alternatives", label: "Voir les alternatives" }, { href: "/fr/wanted", label: "Ce que les gens cherchent" }, { href: "/submit", label: "Ajouter votre produit (EN)" }],
     },
     price: { free: "Gratuit", freemium: "Offre gratuite", paid: "Payant", commission: "Commission", "open-source": "Open source" },
     platform: platforms({ "self-hosted": "Auto-hébergé", "browser-extension": "Extension de navigateur" }),
@@ -225,7 +225,7 @@ const MSG: Record<Lang, M> = {
       cantH: "Introuvable ?",
       cantP: "Votre recherche est enregistrée anonymement et montrée à des développeurs indépendants, qui s’en servent pour choisir quoi construire.",
       buildH: "Vous créez un produit ?",
-      buildP: `Voyez <a href="/wanted">ce que les gens ont cherché sans le trouver</a> (en anglais) et <a href="/submit">ajoutez votre produit</a> gratuitement.`,
+      buildP: `Voyez <a href="/fr/wanted">ce que les gens ont cherché sans le trouver</a> et <a href="/submit">ajoutez votre produit</a> gratuitement.`,
       ai: `Fonctionne aussi dans ChatGPT, Claude et Cursor : <a href="/#add">comment l’ajouter</a> (en anglais).`,
     },
     index: {
@@ -275,7 +275,7 @@ const MSG: Record<Lang, M> = {
     chrome: {
       placeholder: "Para que você precisa de uma ferramenta?",
       button: "Buscar",
-      footer: [{ href: "/pt/alternatives", label: "Ver alternativas" }, { href: "/wanted", label: "O que as pessoas procuram (EN)" }, { href: "/submit", label: "Cadastre seu produto (EN)" }],
+      footer: [{ href: "/pt/alternatives", label: "Ver alternativas" }, { href: "/pt/wanted", label: "O que as pessoas procuram" }, { href: "/submit", label: "Cadastre seu produto (EN)" }],
     },
     price: { free: "Grátis", freemium: "Plano grátis", paid: "Pago", commission: "Comissão", "open-source": "Código aberto" },
     platform: platforms({ "self-hosted": "Auto-hospedado", "browser-extension": "Extensão de navegador" }),
@@ -293,7 +293,7 @@ const MSG: Record<Lang, M> = {
       cantH: "Não encontrou?",
       cantP: "Sua busca é salva de forma anônima e mostrada a desenvolvedores independentes, que a usam para decidir o que criar.",
       buildH: "Está criando algo?",
-      buildP: `Veja <a href="/wanted">o que as pessoas procuraram e não encontraram</a> (em inglês) e <a href="/submit">cadastre seu produto</a> de graça.`,
+      buildP: `Veja <a href="/pt/wanted">o que as pessoas procuraram e não encontraram</a> e <a href="/submit">cadastre seu produto</a> de graça.`,
       ai: `Também funciona no ChatGPT, Claude e Cursor: <a href="/#add">como adicionar</a> (em inglês).`,
     },
     index: {
@@ -343,7 +343,7 @@ const MSG: Record<Lang, M> = {
     chrome: {
       placeholder: "どんなツールをお探しですか？",
       button: "検索",
-      footer: [{ href: "/ja/alternatives", label: "代替ツール一覧" }, { href: "/wanted", label: "求められているツール（英語）" }, { href: "/submit", label: "プロダクトを掲載（英語）" }],
+      footer: [{ href: "/ja/alternatives", label: "代替ツール一覧" }, { href: "/ja/wanted", label: "求められているツール" }, { href: "/submit", label: "プロダクトを掲載（英語）" }],
     },
     price: { free: "無料", freemium: "無料プランあり", paid: "有料", commission: "手数料制", "open-source": "オープンソース" },
     platform: platforms({ "self-hosted": "セルフホスト", "browser-extension": "ブラウザ拡張", web: "Web" }),
@@ -361,7 +361,7 @@ const MSG: Record<Lang, M> = {
       cantH: "見つからない？",
       cantP: "見つからなかった検索は匿名で保存され、次に何をつくるか考えている個人開発者に共有されます。",
       buildH: "開発者の方へ",
-      buildP: `<a href="/wanted">探されたのに見つからなかったツール</a>（英語）をチェックして、<a href="/submit">自分のプロダクトを無料で掲載</a>できます。`,
+      buildP: `<a href="/ja/wanted">探されたのに見つからなかったツール</a>をチェックして、<a href="/submit">自分のプロダクトを無料で掲載</a>できます。`,
       ai: `ChatGPT・Claude・Cursor の中でも使えます：<a href="/#add">追加方法</a>（英語）。`,
     },
     index: {
@@ -418,7 +418,8 @@ const PAGE_PATHS = (data: SeoData) => [
   ...data.categories.map((c) => `/category/${c.slug}`),
 ];
 /** localized URLs for the sitemap */
-export const localizedUrls = (data: SeoData) => LANGS.flatMap((l) => PAGE_PATHS(data).map((p) => (p === "/" ? `/${l}/` : `/${l}${p}`)));
+export const localizedUrls = (data: SeoData, productPaths: string[] = []) =>
+  LANGS.flatMap((l) => [...PAGE_PATHS(data), "/wanted", ...productPaths].map((p) => (p === "/" ? `/${l}/` : `/${l}${p}`)));
 
 /** hreflang alternates for a page that exists in every language (path without the language prefix) */
 export function alternatesFor(base: string, path: string): { lang: string; href: string }[] {
@@ -432,7 +433,7 @@ const platformsOf = (l: Lang, p: Product) => (p.platforms ?? []).map((x) => MSG[
 
 function card(l: Lang, p: Product, n?: number): string {
   const meta = [priceOf(l, p), platformsOf(l, p)].filter(Boolean).map(esc).join(" · ");
-  return `<div class="card product" id="${esc(p.id)}">${logo(p)}<div class="body"><h3>${n ? `${n}. ` : ""}<a href="/product/${esc(p.id)}" hreflang="en">${esc(p.name)}</a></h3>
+  return `<div class="card product" id="${esc(p.id)}">${logo(p)}<div class="body"><h3>${n ? `${n}. ` : ""}<a href="/${l}/product/${esc(p.id)}">${esc(p.name)}</a></h3>
 <p><strong>${esc(tagline(l, p))}</strong></p>
 <p class="count">${meta ? `${meta} · ` : ""}<a href="${esc(p.url)}" rel="noopener">${esc(MSG[l].website)} ↗</a></p></div></div>`;
 }
@@ -551,6 +552,400 @@ ${c.products.map((p) => card(l, p)).join("\n")}`,
       chrome: chrome(l),
       image: `${base}/og/cat/${c.slug}.png`,
       jsonLd: itemListLd(base, `/${l}${path}`, m.h1(name), c.products),
+    },
+  );
+}
+
+// ---------- product pages and the demand board ----------
+
+interface M2 {
+  prod: {
+    title: (name: string, tagline: string) => string;
+    visit: (name: string) => string;
+    pricing: string;
+    platforms: string;
+    categories: string;
+    maker: string;
+    altTo: (name: string) => string;
+    seeAll: (n: number, name: string) => string;
+    compared: (name: string) => string;
+    similar: (name: string) => string;
+    update: string;
+    englishNote: string;
+  };
+  pq: {
+    freeQ: (n: string) => string;
+    freeA: (n: string, kind: "free" | "freemium" | "paid" | "commission") => string;
+    osQ: (n: string) => string;
+    osA: (n: string) => string;
+    shQ: (n: string) => string;
+    shA: (n: string) => string;
+    platQ: (n: string) => string;
+    platA: (n: string, list: string) => string;
+    altQ: (n: string) => string;
+    altA: (list: string) => string;
+  };
+  wanted: {
+    title: string;
+    desc: string;
+    h1: string;
+    lead: string;
+    all: string;
+    missingH: string;
+    missingP: string;
+    partialH: string;
+    partialP: string;
+    empty: (min: number) => string;
+    emptyCat: (c: string, min: number) => string;
+    asked: (n: number) => string;
+    searchIt: string;
+    totals: (records: number, distinct: number, min: number) => string;
+    howH: string;
+    howP: string;
+    original: string;
+  };
+}
+
+const MSG2: Record<Lang, M2> = {
+  es: {
+    prod: {
+      title: (n, t) => `${n}: ${t} · Indie Alternatives`,
+      visit: (n) => `Visitar ${n}`,
+      pricing: "Precio",
+      platforms: "Plataformas",
+      categories: "Categorías",
+      maker: "Creador",
+      altTo: (n) => `${n} es una alternativa a`,
+      seeAll: (k, n) => `¿Buscas otra cosa? Mira las ${k} alternativas a ${n}.`,
+      compared: (n) => `${n} frente a herramientas similares`,
+      similar: (n) => `Similares a ${n}`,
+      update: `¿Es tu producto? <a href="/submit">Envía una actualización</a>.`,
+      englishNote: "(en inglés)",
+    },
+    pq: {
+      freeQ: (n) => `¿${n} es gratis?`,
+      freeA: (n, k) => ({ free: `Sí, ${n} es gratis.`, freemium: `${n} se puede usar gratis y tiene planes de pago.`, paid: `${n} es de pago.`, commission: `${n} es gratis y cobra una comisión por venta.` })[k],
+      osQ: (n) => `¿${n} es de código abierto?`,
+      osA: (n) => `Sí, ${n} es de código abierto.`,
+      shQ: (n) => `¿Se puede autoalojar ${n}?`,
+      shA: (n) => `Sí, puedes instalar ${n} en tu propio servidor.`,
+      platQ: (n) => `¿En qué plataformas funciona ${n}?`,
+      platA: (n, l) => `${n} está disponible para ${l}.`,
+      altQ: (n) => `¿Qué alternativas hay a ${n}?`,
+      altA: (l) => `Productos indie similares: ${l}.`,
+    },
+    wanted: {
+      title: "Se buscan: herramientas que la gente busca y no existen · Indie Alternatives",
+      desc: "Herramientas que la gente buscó sin encontrarlas, de búsquedas anónimas en este sitio y en asistentes de IA. Ideas de producto para desarrolladores indie.",
+      h1: "Se buscan: herramientas que la gente necesita",
+      lead: `Búsquedas reales en este sitio y en ChatGPT, Claude y Cursor, ordenadas por cuántas personas las pidieron. Crea una y <a href="/submit">añádela</a>: quien busque después la encontrará.`,
+      all: "Todas",
+      missingH: "Nadie lo ha creado todavía",
+      missingP: "Búsquedas en las que ninguna herramienta se acercó.",
+      partialH: "Existe, pero no encaja",
+      partialP: "Hubo resultados, pero la gente dijo que ninguno le servía. Hay sitio para un producto mejor o más enfocado.",
+      empty: (min) => `Recopilando. Una necesidad aparece aquí cuando ${min} o más personas la han pedido, para que nadie pueda ser identificado.`,
+      emptyCat: (c, min) => `Nada en ${c} todavía. Una necesidad aparece cuando ${min} o más personas la han pedido.`,
+      asked: (n) => `${n}× pedida`,
+      searchIt: "buscar",
+      totals: (r, d, min) => `${r} búsquedas registradas, ${d} necesidades distintas (las formulaciones parecidas se agrupan). Solo se muestran las pedidas ${min}+ veces.`,
+      howH: "Cómo funciona",
+      howP: "Cuando una búsqueda aquí o en un asistente de IA no encuentra nada, o alguien dice que ningún resultado le sirve, guardamos solo el texto de la necesidad (sin datos de contacto), una categoría aproximada y la fecha. Sin cuentas, sin direcciones IP, sin conversaciones.",
+      original: "Las necesidades se muestran tal como se escribieron.",
+    },
+  },
+  de: {
+    prod: {
+      title: (n, t) => `${n}: ${t} · Indie Alternatives`,
+      visit: (n) => `${n} besuchen`,
+      pricing: "Preis",
+      platforms: "Plattformen",
+      categories: "Kategorien",
+      maker: "Entwickler",
+      altTo: (n) => `${n} ist eine Alternative zu`,
+      seeAll: (k, n) => `Etwas anderes gesucht? Hier sind ${k} Alternativen zu ${n}.`,
+      compared: (n) => `${n} im Vergleich mit ähnlichen Tools`,
+      similar: (n) => `Ähnlich wie ${n}`,
+      update: `Dein Produkt? <a href="/submit">Update einreichen</a>.`,
+      englishNote: "(Englisch)",
+    },
+    pq: {
+      freeQ: (n) => `Ist ${n} kostenlos?`,
+      freeA: (n, k) => ({ free: `Ja, ${n} ist kostenlos.`, freemium: `${n} lässt sich kostenlos nutzen, es gibt auch bezahlte Pläne.`, paid: `${n} ist kostenpflichtig.`, commission: `${n} ist kostenlos und nimmt eine Provision pro Verkauf.` })[k],
+      osQ: (n) => `Ist ${n} Open Source?`,
+      osA: (n) => `Ja, ${n} ist Open Source.`,
+      shQ: (n) => `Kann man ${n} selbst hosten?`,
+      shA: (n) => `Ja, ${n} lässt sich auf dem eigenen Server betreiben.`,
+      platQ: (n) => `Auf welchen Plattformen läuft ${n}?`,
+      platA: (n, l) => `${n} gibt es für ${l}.`,
+      altQ: (n) => `Welche Alternativen gibt es zu ${n}?`,
+      altA: (l) => `Ähnliche Indie-Produkte: ${l}.`,
+    },
+    wanted: {
+      title: "Gesucht: Software, nach der Leute suchen · Indie Alternatives",
+      desc: "Tools, nach denen Leute gesucht und die sie nicht gefunden haben, aus anonymen Suchen auf dieser Seite und in KI-Assistenten. Produktideen für Indie-Entwickler.",
+      h1: "Gesucht: Tools, nach denen Leute suchen",
+      lead: `Echte Suchen auf dieser Seite und in ChatGPT, Claude und Cursor, sortiert danach, wie viele Leute gefragt haben. Bau eins und <a href="/submit">trag es ein</a>, dann finden dich die Nächsten, die suchen.`,
+      all: "Alle",
+      missingH: "Gibt es noch nicht",
+      missingP: "Suchen, bei denen kein Tool auch nur annähernd passte.",
+      partialH: "Gibt es, passt aber nicht",
+      partialP: "Es gab Treffer, aber keiner passte. Platz für ein besseres oder spezialisierteres Produkt.",
+      empty: (min) => `Wird gesammelt. Ein Bedarf erscheint hier, sobald ${min} oder mehr Leute danach gefragt haben, damit niemand erkennbar ist.`,
+      emptyCat: (c, min) => `Noch nichts in ${c}. Ein Bedarf erscheint, sobald ${min} oder mehr Leute danach gefragt haben.`,
+      asked: (n) => `${n}× gefragt`,
+      searchIt: "suchen",
+      totals: (r, d, min) => `${r} Suchen erfasst, ${d} verschiedene Bedarfe (ähnliche Formulierungen werden zusammengefasst). Gezeigt werden nur Bedarfe mit ${min}+ Anfragen.`,
+      howH: "So funktioniert es",
+      howP: "Wenn eine Suche hier oder in einem KI-Assistenten nichts findet oder jemand sagt, dass kein Treffer passt, speichern wir nur den Text des Bedarfs (ohne Kontaktdaten), eine grobe Kategorie und das Datum. Keine Konten, keine IP-Adressen, keine Gesprächsinhalte.",
+      original: "Bedarfe werden so gezeigt, wie sie eingegeben wurden.",
+    },
+  },
+  fr: {
+    prod: {
+      title: (n, t) => `${n} : ${t} · Indie Alternatives`,
+      visit: (n) => `Visiter ${n}`,
+      pricing: "Prix",
+      platforms: "Plateformes",
+      categories: "Catégories",
+      maker: "Créateur",
+      altTo: (n) => `${n} est une alternative à`,
+      seeAll: (k, n) => `Vous cherchez autre chose ? Voici ${k} alternatives à ${n}.`,
+      compared: (n) => `${n} comparé à des outils similaires`,
+      similar: (n) => `Similaires à ${n}`,
+      update: `C’est votre produit ? <a href="/submit">Envoyez une mise à jour</a>.`,
+      englishNote: "(en anglais)",
+    },
+    pq: {
+      freeQ: (n) => `${n} est-il gratuit ?`,
+      freeA: (n, k) => ({ free: `Oui, ${n} est gratuit.`, freemium: `${n} s’utilise gratuitement, avec des offres payantes.`, paid: `${n} est payant.`, commission: `${n} est gratuit et prend une commission sur les ventes.` })[k],
+      osQ: (n) => `${n} est-il open source ?`,
+      osA: (n) => `Oui, ${n} est open source.`,
+      shQ: (n) => `Peut-on auto-héberger ${n} ?`,
+      shA: (n) => `Oui, ${n} peut tourner sur votre propre serveur.`,
+      platQ: (n) => `Sur quelles plateformes fonctionne ${n} ?`,
+      platA: (n, l) => `${n} est disponible sur ${l}.`,
+      altQ: (n) => `Quelles sont les alternatives à ${n} ?`,
+      altA: (l) => `Produits indie similaires : ${l}.`,
+    },
+    wanted: {
+      title: "Recherché : les logiciels que les gens cherchent · Indie Alternatives",
+      desc: "Des outils que les gens ont cherchés sans les trouver, issus de recherches anonymes sur ce site et dans les assistants IA. Des idées de produits pour développeurs indépendants.",
+      h1: "Recherché : les outils que les gens veulent",
+      lead: `De vraies recherches sur ce site et dans ChatGPT, Claude et Cursor, triées selon le nombre de personnes. Créez-en un et <a href="/submit">ajoutez-le</a> : les prochains à chercher vous trouveront.`,
+      all: "Toutes",
+      missingH: "Personne ne l’a encore créé",
+      missingP: "Des recherches où aucun outil n’approchait.",
+      partialH: "Existe, mais ne convient pas",
+      partialP: "Il y avait des résultats, mais aucun ne convenait. De la place pour un produit meilleur ou plus ciblé.",
+      empty: (min) => `Collecte en cours. Un besoin apparaît ici dès que ${min} personnes ou plus l’ont demandé, pour que personne ne soit identifiable.`,
+      emptyCat: (c, min) => `Rien dans ${c} pour l’instant. Un besoin apparaît dès que ${min} personnes ou plus l’ont demandé.`,
+      asked: (n) => `demandé ${n}×`,
+      searchIt: "rechercher",
+      totals: (r, d, min) => `${r} recherches enregistrées, ${d} besoins distincts (les formulations proches sont regroupées). Seuls les besoins demandés ${min}+ fois sont affichés.`,
+      howH: "Comment ça marche",
+      howP: "Quand une recherche ici ou dans un assistant IA ne trouve rien, ou que quelqu’un indique qu’aucun résultat ne convient, nous ne gardons que le texte du besoin (sans coordonnées), une catégorie approximative et la date. Pas de compte, pas d’adresse IP, pas de conversation.",
+      original: "Les besoins sont affichés tels qu’ils ont été saisis.",
+    },
+  },
+  pt: {
+    prod: {
+      title: (n, t) => `${n}: ${t} · Indie Alternatives`,
+      visit: (n) => `Visitar ${n}`,
+      pricing: "Preço",
+      platforms: "Plataformas",
+      categories: "Categorias",
+      maker: "Criador",
+      altTo: (n) => `${n} é uma alternativa a`,
+      seeAll: (k, n) => `Procurando outra coisa? Veja as ${k} alternativas ao ${n}.`,
+      compared: (n) => `${n} comparado a ferramentas parecidas`,
+      similar: (n) => `Parecidos com ${n}`,
+      update: `É o seu produto? <a href="/submit">Envie uma atualização</a>.`,
+      englishNote: "(em inglês)",
+    },
+    pq: {
+      freeQ: (n) => `${n} é grátis?`,
+      freeA: (n, k) => ({ free: `Sim, ${n} é grátis.`, freemium: `${n} pode ser usado de graça e tem planos pagos.`, paid: `${n} é pago.`, commission: `${n} é grátis e cobra comissão por venda.` })[k],
+      osQ: (n) => `${n} é de código aberto?`,
+      osA: (n) => `Sim, ${n} é de código aberto.`,
+      shQ: (n) => `Dá para auto-hospedar o ${n}?`,
+      shA: (n) => `Sim, você pode rodar o ${n} no seu próprio servidor.`,
+      platQ: (n) => `Em quais plataformas o ${n} funciona?`,
+      platA: (n, l) => `${n} está disponível para ${l}.`,
+      altQ: (n) => `Quais são as alternativas ao ${n}?`,
+      altA: (l) => `Produtos indie parecidos: ${l}.`,
+    },
+    wanted: {
+      title: "Procura-se: softwares que as pessoas procuram · Indie Alternatives",
+      desc: "Ferramentas que as pessoas procuraram e não encontraram, de buscas anônimas neste site e em assistentes de IA. Ideias de produto para desenvolvedores indie.",
+      h1: "Procura-se: ferramentas que as pessoas querem",
+      lead: `Buscas reais neste site e no ChatGPT, Claude e Cursor, ordenadas por quantas pessoas pediram. Crie uma e <a href="/submit">cadastre</a>: quem buscar depois vai encontrar você.`,
+      all: "Todas",
+      missingH: "Ninguém criou ainda",
+      missingP: "Buscas em que nenhuma ferramenta chegou perto.",
+      partialH: "Existe, mas não serve",
+      partialP: "Houve resultados, mas as pessoas disseram que nenhum servia. Espaço para um produto melhor ou mais focado.",
+      empty: (min) => `Coletando. Uma necessidade aparece aqui quando ${min} ou mais pessoas pediram, para que ninguém possa ser identificado.`,
+      emptyCat: (c, min) => `Nada em ${c} ainda. Uma necessidade aparece quando ${min} ou mais pessoas pediram.`,
+      asked: (n) => `pedida ${n}×`,
+      searchIt: "buscar",
+      totals: (r, d, min) => `${r} buscas registradas, ${d} necessidades diferentes (formulações parecidas são agrupadas). Só aparecem as pedidas ${min}+ vezes.`,
+      howH: "Como funciona",
+      howP: "Quando uma busca aqui ou num assistente de IA não encontra nada, ou alguém diz que nenhum resultado serve, guardamos só o texto da necessidade (sem dados de contato), uma categoria aproximada e a data. Sem contas, sem endereços IP, sem conversas.",
+      original: "As necessidades aparecem como foram escritas.",
+    },
+  },
+  ja: {
+    prod: {
+      title: (n, t) => `${n}：${t} · Indie Alternatives`,
+      visit: (n) => `${n} を見る`,
+      pricing: "価格",
+      platforms: "対応環境",
+      categories: "カテゴリ",
+      maker: "開発者",
+      altTo: (n) => `${n} が代わりになるアプリ`,
+      seeAll: (k, n) => `ほかの選択肢：${n} の代替ツール ${k} 件を見る。`,
+      compared: (n) => `${n} と類似ツールの比較`,
+      similar: (n) => `${n} に似たツール`,
+      update: `あなたのプロダクトですか？ <a href="/submit">情報を更新する</a>。`,
+      englishNote: "（英語）",
+    },
+    pq: {
+      freeQ: (n) => `${n} は無料ですか？`,
+      freeA: (n, k) => ({ free: `はい、${n} は無料です。`, freemium: `${n} は無料で使い始められ、有料プランもあります。`, paid: `${n} は有料です。`, commission: `${n} は無料で、売上ごとに手数料がかかります。` })[k],
+      osQ: (n) => `${n} はオープンソースですか？`,
+      osA: (n) => `はい、${n} はオープンソースです。`,
+      shQ: (n) => `${n} はセルフホストできますか？`,
+      shA: (n) => `はい、${n} は自分のサーバーで動かせます。`,
+      platQ: (n) => `${n} はどの環境で使えますか？`,
+      platA: (n, l) => `${n} は ${l} で使えます。`,
+      altQ: (n) => `${n} の代わりになるツールは？`,
+      altA: (l) => `似たインディープロダクト：${l}。`,
+    },
+    wanted: {
+      title: "求められているツール：探されたのに見つからなかったもの · Indie Alternatives",
+      desc: "このサイトや AI アシスタントで探されたのに見つからなかったツールを匿名で集計。個人開発者のためのプロダクトのアイデア集です。",
+      h1: "求められているツール",
+      lead: `このサイトと ChatGPT・Claude・Cursor での実際の検索を、求めた人の多い順に並べています。つくったら <a href="/submit">掲載</a> してください。次に探す人に見つけてもらえます。`,
+      all: "すべて",
+      missingH: "まだ誰もつくっていない",
+      missingP: "近いツールが見つからなかった検索。",
+      partialH: "あるけれど合わない",
+      partialP: "結果は出たものの「どれも合わない」とされた検索。もっと良い、または特化したプロダクトの余地があります。",
+      empty: (min) => `集計中です。個人が特定されないよう、${min} 人以上が求めたものだけをここに表示します。`,
+      emptyCat: (c, min) => `${c} にはまだありません。${min} 人以上が求めたものが表示されます。`,
+      asked: (n) => `${n} 人が検索`,
+      searchIt: "検索する",
+      totals: (r, d, min) => `これまでの検索 ${r} 件、異なるニーズ ${d} 件（似た言い回しはまとめています）。表示は ${min} 回以上求められたものだけです。`,
+      howH: "しくみ",
+      howP: "このサイトや AI アシスタントで何も見つからなかったとき、または「どれも合わない」とされたとき、保存するのはニーズの文章（連絡先は削除）、おおまかなカテゴリ、日付だけです。アカウント、IP アドレス、会話の内容は保存しません。",
+      original: "ニーズは入力されたままの言葉で表示しています。",
+    },
+  },
+};
+
+const description = (l: Lang, p: Product) => (DICTS[l] as Dict & { descriptions?: Record<string, string> }).descriptions?.[p.id];
+
+export function localizedProduct(base: string, l: Lang, data: SeoData, p: Product, sim: Product[], noindex: boolean): string {
+  const m = MSG2[l].prod;
+  const q = MSG2[l].pq;
+  const path = `/product/${p.id}`;
+  const reps = data.replaces.get(p.id) ?? [];
+  const own = data.targetByName.get(p.name.toLowerCase());
+  const desc = description(l, p);
+  const enDesc = p.description && p.description !== p.tagline ? p.description : "";
+  const qa: Faq[] = [];
+  if (p.pricing && ["free", "freemium", "paid", "commission"].includes(p.pricing)) qa.push({ q: q.freeQ(p.name), a: q.freeA(p.name, p.pricing as "free") });
+  else if (p.pricing === "open-source") qa.push({ q: q.freeQ(p.name), a: q.freeA(p.name, "free") });
+  if (isOpenSource(p)) qa.push({ q: q.osQ(p.name), a: q.osA(p.name) });
+  if (isSelfHosted(p)) qa.push({ q: q.shQ(p.name), a: q.shA(p.name) });
+  if (p.platforms?.length) qa.push({ q: q.platQ(p.name), a: q.platA(p.name, platformsOf(l, p)) });
+  if (sim.length) qa.push({ q: q.altQ(p.name), a: q.altA(names(l, sim)) });
+  const cat0 = p.categories[0];
+  return layout(
+    m.title(p.name, tagline(l, p)),
+    `${p.name}: ${tagline(l, p)}`,
+    `<p class="count"><a href="/${l}/alternatives">${esc(MSG[l].alt.crumb)}</a>${cat0 ? ` › <a href="/${l}/category/${slugify(cat0)}">${esc(catName(l, cat0))}</a>` : ""} › ${esc(p.name)}</p>
+<div class="phead">${logo(p, 64)}<div><h1>${esc(p.name)}</h1>
+<p class="lead">${esc(tagline(l, p))}</p></div></div>
+${desc ? `<p>${esc(desc)}</p>` : enDesc ? `<p lang="en">${esc(enDesc)} <span class="count">${esc(m.englishNote)}</span></p>` : ""}
+<p><a class="btn" href="${esc(p.url)}" rel="noopener">${esc(m.visit(p.name))} ↗</a></p>
+<div class="card">
+${p.pricing ? `<p><strong>${esc(m.pricing)}:</strong> ${esc(priceOf(l, p))}</p>` : ""}
+${p.platforms?.length ? `<p><strong>${esc(m.platforms)}:</strong> ${esc(platformsOf(l, p))}</p>` : ""}
+${p.categories.length ? `<p><strong>${esc(m.categories)}:</strong> ${p.categories.map((c) => `<a href="/${l}/category/${slugify(c)}">${esc(catName(l, c))}</a>`).join(", ")}</p>` : ""}
+${p.maker ? `<p><strong>${esc(m.maker)}:</strong> ${esc(p.maker)}</p>` : ""}
+</div>
+${reps.length ? `<h2>${esc(m.altTo(p.name))}</h2><p>${reps.map((t) => `<a href="/${l}/alternatives/${t.slug}">${esc(t.name)}</a>`).join(" · ")}</p>` : ""}
+${own ? `<p><a href="/${l}/alternatives/${own.slug}">${esc(m.seeAll(own.products.length, own.name))}</a></p>` : ""}
+${sim.length ? `<h2>${esc(m.compared(p.name))}</h2>${table(l, [p, ...sim.slice(0, 6)])}` : ""}
+${sim.length ? `<h2>${esc(m.similar(p.name))}</h2>${sim.map((o) => card(l, o)).join("\n")}` : ""}
+${qa.length ? `<h2>${esc(MSG[l].faq.title)}</h2>\n${qa.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n")}` : ""}
+<p class="muted">${m.update}</p>`,
+    {
+      canonical: `${base}/${l}${path}`,
+      lang: l,
+      alternates: alternatesFor(base, path),
+      chrome: chrome(l),
+      noindex,
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@graph": [
+          { "@type": "SoftwareApplication", name: p.name, url: p.url, description: desc || tagline(l, p), applicationCategory: cat0, inLanguage: l },
+          ...faqLd(qa),
+        ],
+      },
+    },
+  );
+}
+
+export interface BoardNeed {
+  need: string;
+  count: number;
+  first_seen: string;
+  last_seen: string;
+  categories: string[];
+  kind: "missing" | "partial";
+}
+
+export function localizedWanted(base: string, l: Lang, needs: BoardNeed[], min: number, totals: { records: number; distinct: number }, categories: string[], category?: string): string {
+  const w = MSG2[l].wanted;
+  const missing = needs.filter((n) => n.kind !== "partial");
+  const partial = needs.filter((n) => n.kind === "partial");
+  const href = (c?: string) => `/${l}/wanted${c ? `?category=${encodeURIComponent(c)}` : ""}`;
+  const list = (ns: BoardNeed[]) =>
+    `<ol class="wanted">${ns
+      .map(
+        (n) => `<li><div class="need">${esc(n.need)}</div>
+<div class="count"><span class="pill">${esc(w.asked(n.count))}</span> ${n.first_seen === n.last_seen ? esc(n.last_seen) : `${esc(n.first_seen)} → ${esc(n.last_seen)}`}${
+          n.categories.length ? ` · ${n.categories.map((c) => `<a href="${href(c)}">${esc(catName(l, c))}</a>`).join(", ")}` : ""
+        } · <a href="/search?q=${encodeURIComponent(n.need)}&amp;from=wanted" rel="nofollow">${esc(w.searchIt)}</a></div></li>`,
+      )
+      .join("\n")}</ol>`;
+  const empty = `<div class="card"><p>${esc(category ? w.emptyCat(catName(l, category), min) : w.empty(min))}</p></div>`;
+  const chips = categories.length
+    ? `<p class="chips"><a class="chip${category ? "" : " on"}" href="${href()}">${esc(w.all)}</a>${categories
+        .map((c) => `<a class="chip${c.toLowerCase() === category?.toLowerCase() ? " on" : ""}" href="${href(c)}">${esc(catName(l, c))}</a>`)
+        .join("")}</p>`
+    : "";
+  return layout(
+    w.title,
+    w.desc,
+    `<h1>${esc(w.h1)}</h1>
+<p class="lead">${w.lead}</p>
+${chips}
+<h2>${esc(w.missingH)}</h2><p class="muted">${esc(w.missingP)}</p>
+${missing.length ? list(missing) : empty}
+<h2>${esc(w.partialH)}</h2><p class="muted">${esc(w.partialP)}</p>
+${partial.length ? list(partial) : empty}
+<p class="muted">${esc(w.totals(totals.records, totals.distinct, min))} ${esc(w.original)} JSON: <a href="/api/wanted">/api/wanted</a></p>
+<h2>${esc(w.howH)}</h2><p class="muted">${esc(w.howP)}</p>`,
+    {
+      canonical: category ? `${base}${href(category)}` : `${base}/${l}/wanted`,
+      lang: l,
+      alternates: category ? undefined : alternatesFor(base, "/wanted"),
+      chrome: chrome(l),
+      noindex: Boolean(category) && needs.length === 0,
     },
   );
 }

@@ -429,7 +429,7 @@ ${sim.length ? `<h2>${esc(p.name)} compared with similar tools</h2>${compareTabl
 ${sim.length ? `<h2>Similar to ${esc(p.name)}</h2>${sim.map((o) => productCard(o)).join("\n")}` : ""}
 ${faqHtml(faqs)}
 <p class="muted">Is this your product? <a href="/submit">Submit an update</a>.</p>`,
-    { canonical: base + path, jsonLd: ld, noindex: !indexable(data, p) },
+    { canonical: base + path, jsonLd: ld, noindex: !indexable(data, p), alternates: alternatesFor(base, path) },
   );
 }
 
@@ -437,8 +437,11 @@ ${faqHtml(faqs)}
 export const isThin = (data: SeoData, p: Product) => !(data.replaces.get(p.id)?.length ?? 0) && similarTo(data, p).length === 0;
 const indexable = (_data: SeoData, p: Product) => !THIN.has(p.id);
 
+const productPaths = (data: SeoData) => data.index.all().filter((p) => indexable(data, p)).map((p) => `/product/${p.id}`);
+export const isIndexable = (p: Product) => !THIN.has(p.id);
+
 export function siteUrls(data: SeoData): string[] {
-  return ["/", "/wanted", "/developers", "/alternatives", "/submit", ...data.targets.map((t) => `/alternatives/${t.slug}`), ...data.categories.map((c) => `/category/${c.slug}`), ...data.index.all().filter((p) => indexable(data, p)).map((p) => `/product/${p.id}`), ...localizedUrls(data)];
+  return ["/", "/wanted", "/developers", "/alternatives", "/submit", ...data.targets.map((t) => `/alternatives/${t.slug}`), ...data.categories.map((c) => `/category/${c.slug}`), ...productPaths(data), ...localizedUrls(data, productPaths(data))];
 }
 
 export function sitemapXml(base: string, data: SeoData): string {

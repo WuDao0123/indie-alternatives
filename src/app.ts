@@ -23,9 +23,9 @@ import { redact } from "./privacy.js";
 import { developersPage, searchPage, wantedPage, type PublicNeed } from "./demand.js";
 import { fingerprint } from "./privacy.js";
 import { adminPage } from "./admin.js";
-import { alternatesFor, isLang, localizedAlternative, localizedCategory, localizedHome, localizedIndex } from "./localized.js";
+import { alternatesFor, isLang, localizedAlternative, localizedCategory, localizedHome, localizedIndex, localizedProduct, localizedWanted } from "./localized.js";
 import { badgeSvg, homePage, submitPage, thanksPage } from "./pages.js";
-import { INDEXNOW_KEY, alternativePage, alternativesIndexPage, categoryPage, productPage, robotsTxt, seoData, sitemapXml } from "./seo.js";
+import { INDEXNOW_KEY, isIndexable, similarTo, alternativePage, alternativesIndexPage, categoryPage, productPage, robotsTxt, seoData, sitemapXml } from "./seo.js";
 import type { Product, ProductStore, Submission, SubmissionStatus, SubmissionStore } from "./types.js";
 
 export interface AppDeps extends Deps {
@@ -334,7 +334,7 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
   // ---------- SEO landing pages ----------
 
   /** /{lang}/…: the localized home, index, alternatives and category pages */
-  async function handleLocalized(path: string, base: string): Promise<Response | undefined> {
+  async function handleLocalized(path: string, base: string, url: URL): Promise<Response | undefined> {
     const m = path.match(/^\/([a-z]{2})(\/.*)?$/);
     if (!m || !isLang(m[1])) return undefined;
     const l = m[1];
@@ -351,6 +351,18 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
       await count(deps, ["page:alternatives", `lang:${l}`]);
       return html(localizedAlternative(base, l, data, t));
     }
+    const prod = rest.match(/^\/product\/([\w-]+)\/?$/);
+    const p = prod && data.index.get(prod[1]);
+    if (p) {
+      await count(deps, ["page:product", `lang:${l}`]);
+      return html(localizedProduct(base, l, data, p, similarTo(data, p), !isIndexable(p)));
+    }
+    if (/^\/wanted\/?$/.test(rest)) {
+      const category = url.searchParams.get("category")?.slice(0, 60) || undefined;
+      const pn = await publicNeeds(500, category);
+      await count(deps, ["page:wanted", `lang:${l}`]);
+      return text(localizedWanted(base, l, pn.needs, publicNeedsMin, { records: pn.records, distinct: pn.distinct }, pn.categories, category), "text/html", 200, { "cache-control": "public, max-age=600" });
+    }
     const cat = rest.match(/^\/category\/([a-z0-9-]+)\/?$/);
     const c = cat && data.categoryBySlug.get(cat[1]);
     if (c) {
@@ -360,8 +372,8 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     return undefined;
   }
 
-  async function handleSeo(path: string, base: string): Promise<Response | undefined> {
-    const loc = await handleLocalized(path, base);
+  async function handleSeo(path: string, base: string, url: URL): Promise<Response | undefined> {
+    const loc = await handleLocalized(path, base, url);
     if (loc) return loc;
     if (path === "/robots.txt") return text(robotsTxt(base), "text/plain", 200, PAGE_CACHE);
     // share images are static assets on Workers; one not rendered yet (e.g. a page from a newly approved product) gets the default
@@ -415,7 +427,7 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
       );
     }
     if (get) {
-      const seo = await handleSeo(path, base);
+      const seo = await handleSeo(path, base, url);
       if (seo) return seo;
     }
     if (path === "/search" || (req.method === "POST" && path === "/search/none")) return handleSearch(req, url, base);
