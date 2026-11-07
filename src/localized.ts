@@ -4,7 +4,7 @@
  * data/i18n/{lang}.json (falling back to English). Product pages, the board and the developer guide stay English.
  */
 import { slugify } from "./catalog.js";
-import { esc, layout, type Chrome } from "./pages.js";
+import { esc, layout, missingBox, type Chrome, type MissingText } from "./pages.js";
 import { faqLd, hasFreePlan, isOpenSource, isSelfHosted, itemListLd, logo, related, type Category, type SeoData, type Target } from "./seo.js";
 import type { Product } from "./types.js";
 import es from "../data/i18n/es.json" with { type: "json" };
@@ -24,6 +24,7 @@ const catName = (l: Lang, c: string) => DICTS[l].categories[c] || c;
 
 interface M {
   chrome: Omit<Chrome, "home">;
+  missing: MissingText;
   price: Record<string, string>;
   platform: Record<string, string>;
   website: string;
@@ -68,6 +69,7 @@ const platforms = (labels: Record<string, string>) => ({ macos: "Mac", windows: 
 
 const MSG: Record<Lang, M> = {
   es: {
+    missing: { h: "¿No es justo lo que necesitas?", p: "Cuéntales a los desarrolladores independientes qué falta: una función, un precio, una plataforma. Lo leen para decidir qué construir.", placeholder: "p. ej. funciona sin conexión, pago único, tiene app para Android", button: "Enviar", thanks: "Gracias, anotado. Cuando suficientes personas piden lo mismo, aparece en el tablero público.", note: "Anónimo: solo guardamos el texto y la fecha." },
     chrome: {
       placeholder: "¿Para qué necesitas una herramienta?",
       button: "Buscar",
@@ -136,6 +138,7 @@ const MSG: Record<Lang, M> = {
     },
   },
   de: {
+    missing: { h: "Nicht ganz das Richtige?", p: "Sag unabhängigen Entwicklern, was fehlt: eine Funktion, ein Preis, eine Plattform. Sie lesen das, um zu entscheiden, was sie als Nächstes bauen.", placeholder: "z. B. funktioniert offline, Einmalkauf, hat eine Android-App", button: "Senden", thanks: "Danke, notiert. Wenn genug Leute dasselbe wünschen, erscheint es auf der öffentlichen Liste.", note: "Anonym: Gespeichert werden nur der Text und das Datum." },
     chrome: {
       placeholder: "Wofür brauchst du ein Tool?",
       button: "Suchen",
@@ -204,6 +207,7 @@ const MSG: Record<Lang, M> = {
     },
   },
   fr: {
+    missing: { h: "Pas tout à fait ce qu’il vous faut ?", p: "Dites aux développeurs indépendants ce qui manque : une fonction, un prix, une plateforme. Ils s’en servent pour choisir quoi construire.", placeholder: "ex. fonctionne hors ligne, achat unique, appli Android", button: "Envoyer", thanks: "Merci, c’est noté. Quand assez de personnes demandent la même chose, elle apparaît sur le tableau public.", note: "Anonyme : seuls le texte et la date sont conservés." },
     chrome: {
       placeholder: "De quel outil avez-vous besoin ?",
       button: "Rechercher",
@@ -272,6 +276,7 @@ const MSG: Record<Lang, M> = {
     },
   },
   pt: {
+    missing: { h: "Não é bem o que você precisa?", p: "Conte aos desenvolvedores independentes o que está faltando: um recurso, um preço, uma plataforma. Eles leem isso para decidir o que criar.", placeholder: "ex.: funciona offline, pagamento único, tem app para Android", button: "Enviar", thanks: "Obrigado, anotado. Quando várias pessoas pedem a mesma coisa, ela aparece no quadro público.", note: "Anônimo: guardamos só o texto e a data." },
     chrome: {
       placeholder: "Para que você precisa de uma ferramenta?",
       button: "Buscar",
@@ -340,6 +345,7 @@ const MSG: Record<Lang, M> = {
     },
   },
   ja: {
+    missing: { h: "ぴったりのものがありませんか？", p: "足りないもの（機能、価格、対応プラットフォームなど）を個人開発者に伝えてください。次に何をつくるかの参考になります。", placeholder: "例：オフラインで使える、買い切り、Android アプリがある", button: "送信", thanks: "ありがとうございます。同じ要望が集まると公開ボードに表示されます。", note: "匿名です。保存するのはテキストと日付だけです。" },
     chrome: {
       placeholder: "どんなツールをお探しですか？",
       button: "検索",
@@ -515,6 +521,7 @@ export function localizedAlternative(base: string, l: Lang, data: SeoData, t: Ta
 ${table(l, t.products)}
 <h2>${esc(m.list)}</h2>
 ${t.products.map((p, i) => card(l, p, i + 1)).join("\n")}
+${missingBox(`alt:${t.slug}`, l, MSG[l].missing)}
 <h2>${esc(MSG[l].faq.title)}</h2>
 ${qa.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n")}
 ${rel.length ? `<h2>${esc(m.related)}</h2><ul class="needs">${rel.map((o) => `<li><a href="/${l}/alternatives/${o.slug}">${esc(m.relatedItem(o.name))}</a> <span class="count">· ${o.products.length}</span></li>`).join("")}</ul>` : ""}
@@ -544,7 +551,8 @@ export function localizedCategory(base: string, l: Lang, data: SeoData, c: Categ
 <h1>${esc(m.h1(name))}</h1>
 <p class="lead">${esc(m.lead(n, name))}</p>
 ${alts.length ? `<p>${esc(m.replace)} ${alts.map((t) => `<a href="/${l}/alternatives/${t.slug}">${esc(t.name)}</a>`).join(" · ")}</p>` : ""}
-${c.products.map((p) => card(l, p)).join("\n")}`,
+${c.products.map((p) => card(l, p)).join("\n")}
+${missingBox(`cat:${c.slug}`, l, MSG[l].missing)}`,
     {
       canonical: `${base}/${l}${path}`,
       lang: l,
@@ -880,6 +888,7 @@ ${reps.length ? `<h2>${esc(m.altTo(p.name))}</h2><p>${reps.map((t) => `<a href="
 ${own ? `<p><a href="/${l}/alternatives/${own.slug}">${esc(m.seeAll(own.products.length, own.name))}</a></p>` : ""}
 ${sim.length ? `<h2>${esc(m.compared(p.name))}</h2>${table(l, [p, ...sim.slice(0, 6)])}` : ""}
 ${sim.length ? `<h2>${esc(m.similar(p.name))}</h2>${sim.map((o) => card(l, o)).join("\n")}` : ""}
+${missingBox(`product:${p.id}`, l, MSG[l].missing)}
 ${qa.length ? `<h2>${esc(MSG[l].faq.title)}</h2>\n${qa.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n")}` : ""}
 <p class="muted">${m.update}</p>`,
     {

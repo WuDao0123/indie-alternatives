@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createApp } from "../src/app.js";
+import { botName } from "../src/bots.js";
 import { MergedSource } from "../src/catalog.js";
 import { JsonFileSource, BUNDLED_CATALOG, fromEnv } from "../src/sources.js";
 import { MIGRATIONS, SCHEMA, SqlNeedStore, SqlProductStore, SqlStatsStore, SqlSubmissionStore } from "../src/sql.js";
@@ -380,4 +381,36 @@ test("fake demand: one address flooding counts once a day; rate limit; spam; adm
   const limited = await post("a perfectly normal need for invoices", "198.51.100.10");
   assert.equal(limited.status, 429);
   assert.equal((await needs2.list()).length, before);
+});
+
+test("crawlers are counted apart from people", async () => {
+  const chrome = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+  assert.equal(botName(chrome), undefined);
+  assert.equal(botName("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"), "googlebot");
+  assert.equal(botName("Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2; +https://openai.com/gptbot)"), "gptbot");
+  assert.equal(botName("curl/8.4.0"), "other");
+  assert.equal(botName(null), "other");
+  const before = (await (await call("/api/admin/stats", { admin: true })).json()).totals;
+  await call("/alternatives/notion", { headers: { "user-agent": chrome } });
+  await call("/alternatives/notion", { headers: { "user-agent": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)" } });
+  const after = (await (await call("/api/admin/stats", { admin: true })).json()).totals;
+  assert.equal((after["page:alternatives"] ?? 0) - (before["page:alternatives"] ?? 0), 1);
+  assert.equal((after["bot:bingbot"] ?? 0) - (before["bot:bingbot"] ?? 0), 1);
+});
+
+test("'not quite what you need?' box on landing pages logs a partial need with context", async () => {
+  for (const path of ["/alternatives/notion", "/es/alternatives/notion", "/category/forms-surveys", "/ja/category/forms-surveys"])
+    assert.match(await (await call(path)).text(), /<form class="card missing" method="post" action="\/need"/, path);
+  const form = { "content-type": "application/x-www-form-urlencoded" };
+  const r = await call("/need", { method: "POST", headers: { ...form, accept: "application/json" }, body: "about=alt%3Anotion&lang=en&need=" + encodeURIComponent("works fully offline on iPad") });
+  assert.deepEqual(await r.json(), { logged: true });
+  const html = await call("/need", { method: "POST", headers: form, body: "about=bogus&need=" + encodeURIComponent("a calmer email client for teams") });
+  assert.match(await html.text(), /Thanks, noted/);
+  const needs = (await (await call("/api/admin/needs", { admin: true })).json()).needs;
+  const n = needs.find((x: any) => x.need === "Notion alternative: works fully offline on iPad");
+  assert.ok(n, JSON.stringify(needs.map((x: any) => x.need)));
+  assert.equal(n.kind, "partial");
+  assert.ok(needs.some((x: any) => x.need === "a calmer email client for teams"));
+  const stats = (await (await call("/api/admin/stats", { admin: true })).json()).totals;
+  assert.equal(stats["web:page-need"], 2);
 });

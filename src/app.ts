@@ -25,6 +25,7 @@ import { fingerprint } from "./privacy.js";
 import { adminPage } from "./admin.js";
 import { alternatesFor, isLang, localizedAlternative, localizedCategory, localizedHome, localizedIndex, localizedProduct, localizedWanted } from "./localized.js";
 import { badgeSvg, homePage, submitPage, thanksPage } from "./pages.js";
+import { botName } from "./bots.js";
 import { INDEXNOW_KEY, isIndexable, similarTo, alternativePage, alternativesIndexPage, categoryPage, productPage, robotsTxt, seoData, sitemapXml } from "./seo.js";
 import type { Product, ProductStore, Submission, SubmissionStatus, SubmissionStore } from "./types.js";
 
@@ -195,6 +196,31 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     const fromBoard = url.searchParams.get("from") === "wanted";
     const logged = r.matched || fromBoard ? { logged: false, headers: {} } : await logWebNeed(req, q, "web:unmatched", { category: categoryOf(hits) });
     return html(searchPage(base, q, { matched: r.matched, hits: shown, logged: logged.logged }), 200, logged.headers);
+  }
+
+  /** POST /need: the "not quite what you need?" box on landing pages; logged as "exists but doesn't fit" */
+  async function handleNeed(req: Request, base: string): Promise<Response> {
+    const form = new URLSearchParams(await readBody(req));
+    const need = (form.get("need") ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
+    const about = (form.get("about") ?? "").slice(0, 120);
+    const data = seoData(await indexFor(deps.catalog));
+    const [kind, id] = about.split(":", 2);
+    let name: string | undefined;
+    let category: string | undefined;
+    if (kind === "alt") {
+      const t = data.targetBySlug.get(id);
+      name = t?.name;
+      category = t?.categories[0];
+    } else if (kind === "product") {
+      const p = data.index.get(id);
+      name = p?.name;
+      category = p?.categories[0];
+    } else if (kind === "cat") category = data.categoryBySlug.get(id)?.name;
+    // "Notion alternative: works offline" reads like a search and groups with them on the board
+    const q = name && !need.toLowerCase().includes(name.toLowerCase()) ? `${name} alternative: ${need}` : need;
+    const r = loggable(need) ? await logWebNeed(req, q, "web:page-need", { kind: "partial", category }) : { logged: false, headers: {} };
+    if ((req.headers.get("accept") ?? "").includes("application/json")) return json({ logged: r.logged }, 200, r.headers);
+    return text(searchPage(base, need, { matched: false, hits: [], logged: r.logged, reported: true }), "text/html", 200, { "cache-control": "no-store", ...r.headers });
   }
 
   /** the client address, only ever used transiently: hashed with today's salt, and as the rate-limit key */
@@ -375,7 +401,13 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
   // ---------- SEO landing pages ----------
 
   /** /{lang}/…: the localized home, index, alternatives and category pages */
-  async function handleLocalized(path: string, base: string, url: URL): Promise<Response | undefined> {
+  /** landing page views: people under page:*, crawlers and scripts under bot:* */
+  const pageCount = (req: Request, keys: string[]) => {
+    const bot = botName(req.headers.get("user-agent"));
+    return count(deps, bot ? ["bot:page", `bot:${bot}`] : keys);
+  };
+
+  async function handleLocalized(req: Request, path: string, base: string, url: URL): Promise<Response | undefined> {
     const m = path.match(/^\/([a-z]{2})(\/.*)?$/);
     if (!m || !isLang(m[1])) return undefined;
     const l = m[1];
@@ -389,32 +421,32 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     const alt = rest.match(/^\/alternatives\/([a-z0-9-]+)\/?$/);
     const t = alt && data.targetBySlug.get(alt[1]);
     if (t) {
-      await count(deps, ["page:alternatives", `lang:${l}`]);
+      await pageCount(req, ["page:alternatives", `lang:${l}`]);
       return html(localizedAlternative(base, l, data, t));
     }
     const prod = rest.match(/^\/product\/([\w-]+)\/?$/);
     const p = prod && data.index.get(prod[1]);
     if (p) {
-      await count(deps, ["page:product", `lang:${l}`]);
+      await pageCount(req, ["page:product", `lang:${l}`]);
       return html(localizedProduct(base, l, data, p, similarTo(data, p), !isIndexable(p)));
     }
     if (/^\/wanted\/?$/.test(rest)) {
       const category = url.searchParams.get("category")?.slice(0, 60) || undefined;
       const pn = await publicNeeds(500, category);
-      await count(deps, ["page:wanted", `lang:${l}`]);
+      await pageCount(req, ["page:wanted", `lang:${l}`]);
       return text(localizedWanted(base, l, pn.needs, publicNeedsMin, { records: pn.records, distinct: pn.distinct }, pn.categories, category), "text/html", 200, { "cache-control": "public, max-age=600" });
     }
     const cat = rest.match(/^\/category\/([a-z0-9-]+)\/?$/);
     const c = cat && data.categoryBySlug.get(cat[1]);
     if (c) {
-      await count(deps, ["page:category", `lang:${l}`]);
+      await pageCount(req, ["page:category", `lang:${l}`]);
       return html(localizedCategory(base, l, data, c));
     }
     return undefined;
   }
 
-  async function handleSeo(path: string, base: string, url: URL): Promise<Response | undefined> {
-    const loc = await handleLocalized(path, base, url);
+  async function handleSeo(req: Request, path: string, base: string, url: URL): Promise<Response | undefined> {
+    const loc = await handleLocalized(req, path, base, url);
     if (loc) return loc;
     if (path === "/robots.txt") return text(robotsTxt(base), "text/plain", 200, PAGE_CACHE);
     // share images are static assets on Workers; one not rendered yet (e.g. a page from a newly approved product) gets the default
@@ -428,7 +460,7 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     if (prod) {
       const p = data.index.get(prod[1]);
       if (!p) return undefined;
-      await count(deps, ["page:product"]);
+      await pageCount(req, ["page:product"]);
       return text(productPage(base, data, p), "text/html", 200, PAGE_CACHE);
     }
     if (path === "/sitemap.xml") return text(sitemapXml(base, data), "application/xml", 200, PAGE_CACHE);
@@ -436,7 +468,7 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
     const t = alt ? data.targetBySlug.get(alt[1]) : undefined;
     const c = cat ? data.categoryBySlug.get(cat[1]) : undefined;
     if (!t && !c) return undefined; // falls through to the normal 404
-    await count(deps, [t ? "page:alternatives" : "page:category"]);
+    await pageCount(req, [t ? "page:alternatives" : "page:category"]);
     return text(t ? alternativePage(base, data, t) : categoryPage(base, data, c!), "text/html", 200, PAGE_CACHE);
   }
 
@@ -468,14 +500,15 @@ export function createApp(deps: AppDeps, config: AppConfig = {}): (req: Request)
       );
     }
     if (get) {
-      const seo = await handleSeo(path, base, url);
+      const seo = await handleSeo(req, path, base, url);
       if (seo) return seo;
     }
     if (path === "/search" || (req.method === "POST" && path === "/search/none")) return handleSearch(req, url, base);
+    if (req.method === "POST" && path === "/need") return handleNeed(req, base);
     if (get && (path === "/wanted" || path === "/api/wanted")) {
       const category = url.searchParams.get("category")?.slice(0, 60) || undefined;
       const p = await publicNeeds(500, category);
-      if (path === "/wanted") await count(deps, ["page:wanted"]);
+      if (path === "/wanted") await pageCount(req, ["page:wanted"]);
       if (path === "/api/wanted")
         return json({ min_count: publicNeedsMin, total_records: p.records, distinct_needs: p.distinct, categories: p.categories, needs: p.needs }, 200, { "cache-control": "public, max-age=600" });
       return text(wantedPage(base, p.needs, publicNeedsMin, { records: p.records, distinct: p.distinct }, p.categories, category), "text/html", 200, { "cache-control": "public, max-age=600" });

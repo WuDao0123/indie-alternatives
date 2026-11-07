@@ -51,6 +51,7 @@ textarea{min-height:90px}
 ol.wanted{list-style:none;padding:0;margin:8px 0;counter-reset:w}ol.wanted li{padding:12px 0;border-bottom:1px solid var(--line)}
 ol.wanted .need{font-weight:600}.pill{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--code);color:var(--fg);font-weight:600}
 .chip:hover{border-color:var(--accent);color:var(--accent)}
+.missing textarea{min-height:64px;margin:4px 0 10px}.missing h3{margin-top:0}.missing .note{font-size:13px;margin:8px 0 0}
 .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:32px 0 0}.split .card{margin:0}.split h3{margin-top:0}
 details.card summary{cursor:pointer}details.card[open] summary{margin-bottom:8px}
 table.compare{width:100%;min-width:620px;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:10px}
@@ -99,6 +100,34 @@ const EN_CHROME: Chrome = {
     { href: "/openapi.json", label: "OpenAPI" },
   ],
 };
+
+/** the "what's missing?" box on landing pages; posts to /need, without a reload when JS runs */
+export interface MissingText {
+  h: string;
+  p: string;
+  placeholder: string;
+  button: string;
+  thanks: string;
+  note: string;
+}
+
+export const EN_MISSING: MissingText = {
+  h: "Not quite what you need?",
+  p: "Tell independent developers what's missing: a feature, a price, a platform. Makers read this to decide what to build next.",
+  placeholder: "e.g. works offline, one-time price, has an Android app",
+  button: "Send",
+  thanks: "Thanks, noted. When enough people ask for the same thing, it shows up on the public board.",
+  note: "Anonymous: only the text and the date are kept.",
+};
+
+export function missingBox(about: string, lang: string, m: MissingText): string {
+  return `<form class="card missing" method="post" action="/need" data-thanks="${esc(m.thanks)}">
+<h3>${esc(m.h)}</h3><label for="need-text">${esc(m.p)}</label>
+<textarea id="need-text" name="need" maxlength="200" required placeholder="${esc(m.placeholder)}"></textarea>
+<input type="hidden" name="about" value="${esc(about)}"><input type="hidden" name="lang" value="${esc(lang)}">
+<button class="btn" type="submit">${esc(m.button)}</button> <p class="muted note">${esc(m.note)} <a href="/wanted">/wanted</a></p></form>
+<script>document.querySelectorAll("form.missing").forEach(function(f){f.addEventListener("submit",function(e){e.preventDefault();var b=f.querySelector("button");b.disabled=true;fetch("/need",{method:"POST",headers:{accept:"application/json"},body:new URLSearchParams(new FormData(f))}).then(function(r){return r.json()}).then(function(){var p=document.createElement("p");p.className="lead";p.textContent=f.dataset.thanks;f.replaceChildren(p)}).catch(function(){f.submit()})})})</script>`;
+}
 
 export const LANG_NAMES: Record<string, string> = { en: "English", es: "Español", de: "Deutsch", fr: "Français", pt: "Português", ja: "日本語" };
 

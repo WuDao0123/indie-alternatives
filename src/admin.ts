@@ -143,7 +143,9 @@ async function load() {
     ["Found nothing", searches ? Math.round(((t["search:unmatched"] || 0) / searches) * 100) + "%" : "–"],
     ["Needs logged", fmt(t["tool:log_unmet_need"] || 0)],
     ["“None fit” clicks", fmt(t["web:none-fit"] || 0)],
-    ["Landing page views", fmt(pages)],
+    ["Notes from landing pages", fmt(t["web:page-need"] || 0)],
+    ["Landing page views (people)", fmt(pages)],
+    ["Crawler / script views", fmt(t["bot:page"] || 0)],
     ["Pending submissions", fmt((subs.submissions || []).length)],
   ].map(([k, v]) => '<div class="tile"><div class="v">' + v + '</div><div class="k">' + k + "</div></div>").join("");
 
@@ -156,6 +158,7 @@ async function load() {
 
   const top = (re, n) => Object.entries(t).filter(([k]) => re.test(k)).map(([k, v]) => ({ k: k.replace(re, ""), v })).sort((a, b) => b.v - a.v).slice(0, n);
   $("#t-sources").innerHTML = table(top(/^source:/, 20), [{ h: "App (source)", f: (r) => r.k }, { h: "Needs", n: 1, f: (r) => r.v }]);
+  $("#t-bots").innerHTML = table(top(/^bot:/, 21).filter((r) => r.k !== "page").slice(0, 20), [{ h: "Crawler", f: (r) => r.k }, { h: "Page views", n: 1, f: (r) => r.v }]);
   $("#t-clients").innerHTML = table(top(/^client:/, 20), [{ h: "MCP client", f: (r) => r.k }, { h: "Connections", n: 1, f: (r) => r.v }]);
   $("#t-needs").innerHTML = needs.needs.length ? '<div class="scroll"><table><thead><tr><th>Need</th><th>Type</th><th>Category</th><th>Last seen</th><th class="n">People</th><th class="n">Requests</th><th>Via</th><th>Check</th><th></th></tr></thead><tbody>' +
     needs.needs.map((r, i) => '<tr' + (r.hidden ? ' class="off"' : "") + "><td>" + esc(r.need) + "</td><td>" + (r.kind === "partial" ? "doesn't fit" : "missing") + "</td><td>" + esc((r.categories || []).join(", ")) +
@@ -191,6 +194,7 @@ export function adminPage(base: string): string {
 <details class="card"><summary><strong>Daily numbers (table)</strong></summary><div id="t-daily"></div></details>
 <h2>Needs</h2><p id="needs-total" class="count"></p><div id="t-needs" class="card"></div>
 <div class="two"><div><h2>Apps forwarding needs</h2><div id="t-sources" class="card"></div></div><div><h2>MCP clients</h2><div id="t-clients" class="card"></div></div></div>
+<h2>Crawlers</h2><p class="muted">Counted since crawler filtering was added; older page views include them.</p><div id="t-bots" class="card"></div>
 </div>
 <script>${SCRIPT}</script>`,
     { canonical: base + "/admin", noindex: true, hideSearch: true },

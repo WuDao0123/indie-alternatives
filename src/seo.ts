@@ -10,7 +10,7 @@
  * Pages are derived from the live index (bundled catalog + approved submissions), memoized per index object.
  */
 import { slugify } from "./catalog.js";
-import { esc, layout, type PageMeta } from "./pages.js";
+import { EN_MISSING, esc, layout, missingBox, type PageMeta } from "./pages.js";
 import { alternatesFor, localizedUrls } from "./localized.js";
 import type { ProductIndex } from "./search.js";
 import type { Product } from "./types.js";
@@ -319,6 +319,7 @@ export function alternativePage(base: string, data: SeoData, t: Target): string 
 ${compareTable(t.products)}
 <h2>The alternatives</h2>
 ${t.products.map((p, i) => productCard(p, i + 1)).join("\n")}
+${missingBox(`alt:${t.slug}`, "en", EN_MISSING)}
 ${faqHtml(faqs)}
 ${askYourAi(`a cheaper ${t.name} alternative that works on my Mac`)}
 ${rel.length ? `<h2>Related</h2><ul class="needs">${rel.map((o) => `<li><a href="/alternatives/${o.slug}">Alternatives to ${esc(o.name)}</a> <span class="count">· ${o.products.length}</span></li>`).join("")}</ul>` : ""}
@@ -341,6 +342,7 @@ export function categoryPage(base: string, data: SeoData, c: Category): string {
 <p class="lead">${n} ${esc(c.name.toLowerCase())} products built by independent developers and small teams.</p>
 ${alts.length ? `<p>Looking to replace something? ${alts.map((t) => `<a href="/alternatives/${t.slug}">${esc(t.name)}</a>`).join(" · ")}</p>` : ""}
 ${c.products.map((p) => productCard(p)).join("\n")}
+${missingBox(`cat:${c.slug}`, "en", EN_MISSING)}
 ${askYourAi(`an indie ${c.name.toLowerCase()} tool that's free for small teams`)}`,
     { canonical: base + path, jsonLd: itemListLd(base, path, `Indie ${c.name} tools`, c.products), image: `${base}/og/cat/${c.slug}.png`, alternates: alternatesFor(base, path) },
   );
@@ -427,6 +429,7 @@ ${reps.length ? `<h2>${esc(p.name)} is an alternative to</h2><p>${reps.map((t) =
 ${own ? `<p>Looking for something else? See <a href="/alternatives/${own.slug}">${own.products.length} alternatives to ${esc(own.name)}</a>.</p>` : ""}
 ${sim.length ? `<h2>${esc(p.name)} compared with similar tools</h2>${compareTable([p, ...sim.slice(0, 6)], p.id)}` : ""}
 ${sim.length ? `<h2>Similar to ${esc(p.name)}</h2>${sim.map((o) => productCard(o)).join("\n")}` : ""}
+${missingBox(`product:${p.id}`, "en", EN_MISSING)}
 ${faqHtml(faqs)}
 <p class="muted">Is this your product? <a href="/submit">Submit an update</a>.</p>`,
     { canonical: base + path, jsonLd: ld, noindex: !indexable(data, p), alternates: alternatesFor(base, path) },
